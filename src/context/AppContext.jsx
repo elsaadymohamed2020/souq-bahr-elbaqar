@@ -40,7 +40,13 @@ export function AppProvider({ children }) {
   const [adminTab, setAdminTab] = useState('home'); // 'home' | 'inbox' | 'products' | 'offers' | 'crm' | 'erp'
   
   // Data States (persisted to localStorage)
-  const [products, setProducts] = useState(() => getStored(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS));
+  const [products, setProducts] = useState(() => {
+    const stored = getStored(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS);
+    return stored.map((p) => {
+      const def = DEFAULT_PRODUCTS.find((d) => d.code === p.code);
+      return def?.img ? { ...p, img: def.img } : p;
+    });
+  });
   const [offers, setOffers] = useState(() => getStored(STORAGE_KEYS.OFFERS, DEFAULT_OFFERS));
   const [invoices, setInvoices] = useState(() => getStored(STORAGE_KEYS.INVOICES, DEFAULT_INVOICES));
   const [customers, setCustomers] = useState(() => getStored(STORAGE_KEYS.CUSTOMERS, DEFAULT_CUSTOMERS));

@@ -210,29 +210,39 @@ export default function ProductCatalog() {
                 }`}
               >
                 {/* Visual Area */}
-                <div className="h-44 bg-gradient-to-br from-slate-50 via-slate-100/60 to-slate-200/40 relative flex items-center justify-center p-4 overflow-hidden">
-                  
-                  {/* Category icon visual */}
-                  <div className="w-20 h-20 rounded-3xl bg-white shadow-soft flex items-center justify-center text-ink group-hover:scale-105 transition-transform duration-300 border border-slate-100">
-                    <IconComponent className="w-10 h-10 text-slate-700" />
-                  </div>
+                <div className="h-48 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+                  {product.img ? (
+                    <img
+                      src={product.img}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-3xl bg-white shadow-soft flex items-center justify-center text-ink group-hover:scale-105 transition-transform duration-300 border border-slate-100">
+                      <IconComponent className="w-10 h-10 text-slate-700" />
+                    </div>
+                  )}
+
+                  {/* Top gradient for chip contrast */}
+                  <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/40 via-black/10 to-transparent pointer-events-none" />
 
                   {/* Status chip */}
                   <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-sm border">
                     {isAvail && (
-                      <span className="bg-emerald-500/10 text-emerald-700 border-emerald-300/80 flex items-center gap-1.5">
+                      <span className="bg-white/90 text-emerald-700 border-white/60 flex items-center gap-1.5 shadow-sm">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         متاح الآن
                       </span>
                     )}
                     {isHeld && (
-                      <span className="bg-amber-500/15 text-amber-800 border-amber-300/80 flex items-center gap-1.5">
+                      <span className="bg-white/90 text-amber-800 border-white/60 flex items-center gap-1.5 shadow-sm">
                         <span className="w-2 h-2 rounded-full bg-amber-500" />
                         محجوز لعميل
                       </span>
                     )}
                     {isSold && (
-                      <span className="bg-rose-500/10 text-rose-700 border-rose-300/80 flex items-center gap-1.5">
+                      <span className="bg-white/90 text-rose-700 border-white/60 flex items-center gap-1.5 shadow-sm">
                         <span className="w-2 h-2 rounded-full bg-rose-500" />
                         تم البيع
                       </span>
@@ -241,19 +251,19 @@ export default function ProductCatalog() {
 
                   {/* Discount or New Badge */}
                   {hasDiscount && !isSold && (
-                    <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-amber-600 text-ink font-heading font-black text-xs px-2.5 py-1 rounded-xl shadow-sm">
+                    <div className="absolute top-3 left-3 bg-amber-500 text-ink font-heading font-black text-xs px-2.5 py-1 rounded-xl shadow-md">
                       خصم {offer.pct}%
                     </div>
                   )}
 
                   {product.isNew && !hasDiscount && !isSold && (
-                    <div className="absolute top-3 left-3 bg-brand-blue text-white font-heading font-bold text-[11px] px-2.5 py-1 rounded-xl shadow-sm">
+                    <div className="absolute top-3 left-3 bg-brand-blue text-white font-heading font-bold text-[11px] px-2.5 py-1 rounded-xl shadow-md">
                       وصل حديثاً
                     </div>
                   )}
 
                   {/* Item Code badge */}
-                  <div className="absolute bottom-2.5 left-3 text-[11px] font-mono font-bold text-slate-400">
+                  <div className="absolute bottom-2.5 left-3 text-[11px] font-mono font-bold text-white bg-black/60 px-2 py-0.5 rounded-md backdrop-blur-sm">
                     {product.code}
                   </div>
                 </div>

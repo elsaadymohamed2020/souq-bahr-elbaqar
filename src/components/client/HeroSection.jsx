@@ -90,16 +90,18 @@ export default function HeroSection() {
             <div className="relative w-full max-w-[340px] sm:max-w-[380px] h-[340px]">
               
               {/* Card 1: Refrigerator */}
-              <div className="absolute top-0 right-0 w-[230px] bg-white rounded-2xl p-4 shadow-2xl border border-slate-100 rotate-[-4deg] hover:rotate-0 transition-transform duration-300">
-                <div className="h-28 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center relative overflow-hidden">
-                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+              <div className="absolute top-0 right-0 w-[230px] bg-white rounded-2xl p-3 shadow-2xl border border-slate-100 rotate-[-4deg] hover:rotate-0 transition-transform duration-300 overflow-hidden">
+                <div className="h-28 rounded-xl bg-slate-100 relative overflow-hidden">
+                  <img
+                    src="/images/products/fridge.jpg"
+                    alt="تلاجة 16 قدم"
+                    className="w-full h-full object-cover"
+                  />
+                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-emerald-700 shadow-sm">
                     متاح الآن
                   </span>
-                  <div className="w-14 h-14 rounded-2xl bg-white/80 shadow-sm flex items-center justify-center text-blue-600 font-bold text-xl">
-                    ❄️
-                  </div>
                 </div>
-                <div className="mt-3">
+                <div className="mt-2.5 px-1">
                   <h4 className="font-bold text-ink text-sm line-clamp-1">تلاجة 16 قدم نوفروست</h4>
                   <div className="flex items-baseline justify-between mt-1">
                     <span className="font-heading font-black text-lg text-ink">
@@ -111,16 +113,18 @@ export default function HeroSection() {
               </div>
 
               {/* Card 2: Welding Machine */}
-              <div className="absolute top-16 left-0 w-[230px] bg-white rounded-2xl p-4 shadow-2xl border border-slate-100 rotate-[6deg] hover:rotate-0 transition-transform duration-300 z-10">
-                <div className="h-28 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center relative overflow-hidden">
-                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900">
+              <div className="absolute top-16 left-0 w-[230px] bg-white rounded-2xl p-3 shadow-2xl border border-slate-100 rotate-[6deg] hover:rotate-0 transition-transform duration-300 z-10 overflow-hidden">
+                <div className="h-28 rounded-xl bg-slate-100 relative overflow-hidden">
+                  <img
+                    src="/images/products/welder.jpg"
+                    alt="مكينة لحام ألماني"
+                    className="w-full h-full object-cover"
+                  />
+                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-ink shadow-sm">
                     خصم 10%
                   </span>
-                  <div className="w-14 h-14 rounded-2xl bg-white/80 shadow-sm flex items-center justify-center text-amber-600 font-bold text-xl">
-                    ⚡
-                  </div>
                 </div>
-                <div className="mt-3">
+                <div className="mt-2.5 px-1">
                   <h4 className="font-bold text-ink text-sm line-clamp-1">مكينة لحام ألماني مستوردة</h4>
                   <div className="flex items-baseline justify-between mt-1">
                     <span className="font-heading font-black text-lg text-ink">
