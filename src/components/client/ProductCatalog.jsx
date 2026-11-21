@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Refrigerator,
@@ -58,8 +58,50 @@ export default function ProductCatalog() {
     return matchesCat && matchesSearch && matchesAvail;
   });
 
-  // Active promotional banners
+  // Active promotional banners & announcements
   const liveOffers = offers.filter((o) => o.active);
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  const announcementSlides = [
+    ...(liveOffers.length > 0
+      ? liveOffers.map((o) => ({
+          badge: `🔥 خصم ${o.pct}%`,
+          badgeStyle: 'bg-amber-500 text-ink',
+          title: o.title || `خصم ${o.pct}% ساري الآن على المعروض`,
+          desc: `ساري حتى ${o.ends} · الخصم محسوب تلقائياً في الأسعار بالأسفل`,
+          icon: Tag,
+        }))
+      : [
+          {
+            badge: '🔥 عروض مستمرة',
+            badgeStyle: 'bg-amber-500 text-ink',
+            title: 'خصومات مميزة على الأجهزة والمعدات الصناعية',
+            desc: 'تخفيضات خاصة عند شراء أكثر من قطعة للمعرض أو الورش',
+            icon: Tag,
+          },
+        ]),
+    {
+      badge: '✨ وصل حديثاً',
+      badgeStyle: 'bg-brand-blue text-white',
+      title: 'وصول دفعة مواتير Siemens 10 و12 حصان وتلاجات كريازي',
+      desc: 'فحص شامل وبحالة الزيرو — المعاينة بفرع الصالحية وبحر البقر',
+      icon: Sparkles,
+    },
+    {
+      badge: '💬 حجز فوري',
+      badgeStyle: 'bg-emerald-600 text-white',
+      title: 'احجز قطعتك برقم الكود مباشرة على الواتساب',
+      desc: 'اضغط على زر "احجز على واتساب" ويتم تثبيت القطعة باسمك',
+      icon: MessageCircle,
+    },
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % announcementSlides.length);
+    }, 3800);
+    return () => clearInterval(timer);
+  }, [announcementSlides.length]);
 
   return (
     <section id="items" className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6">
@@ -79,22 +121,40 @@ export default function ProductCatalog() {
           </p>
         </div>
 
-        {/* Live offers ribbon if any */}
-        {liveOffers.length > 0 && (
-          <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 border border-amber-400/40 rounded-2xl px-4 py-3 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-amber-500 text-ink">
-              <Tag className="w-4 h-4 font-bold" />
+        {/* Dynamic Animated Announcements & Offers Card */}
+        <div className="w-full md:w-auto md:min-w-[360px] bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 border border-amber-400/40 rounded-2xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm ${announcementSlides[activeSlide].badgeStyle}`}>
+              {announcementSlides[activeSlide].badge}
             </span>
-            <div>
-              <span className="font-heading font-bold text-sm text-ink block">
-                {liveOffers[0].title || `خصم خاص ${liveOffers[0].pct}% على أقسام مختارة`}
-              </span>
-              <span className="text-xs text-slate-500">
-                ساري حتى {liveOffers[0].ends} · الخصم محسوب تلقائياً في الأسعار بالأسفل
-              </span>
+            <div className="flex items-center gap-1">
+              {announcementSlides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveSlide(i)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    activeSlide === i ? 'w-4 bg-amber-500' : 'w-1.5 bg-amber-300/70'
+                  }`}
+                  aria-label={`إعلان ${i + 1}`}
+                />
+              ))}
             </div>
           </div>
-        )}
+
+          <div className="flex items-start gap-3 min-h-[44px]">
+            <span className="p-2 rounded-xl bg-amber-500 text-ink shrink-0 mt-0.5 shadow-sm">
+              <Tag className="w-4 h-4 font-bold" />
+            </span>
+            <div className="space-y-0.5">
+              <h4 className="font-heading font-bold text-sm text-ink leading-snug">
+                {announcementSlides[activeSlide].title}
+              </h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {announcementSlides[activeSlide].desc}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
