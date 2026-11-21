@@ -6,6 +6,8 @@ import ClientStorefront from './components/client/ClientStorefront';
 import AdminDashboard from './components/admin/AdminDashboard';
 import Toast from './components/common/Toast';
 import Modals from './components/admin/Modals';
+import CartDrawer from './components/cart/CartDrawer';
+import PaymentModal from './components/cart/PaymentModal';
 
 function AppContent() {
   const { viewMode } = useApp();
@@ -23,9 +25,11 @@ function AppContent() {
         {viewMode === 'store' ? <ClientStorefront /> : <AdminDashboard />}
       </div>
 
-      {/* Common Popups & Toasts */}
+      {/* Common Popups, Toasts, Cart & Checkout */}
       <Toast />
       <Modals />
+      <CartDrawer />
+      <PaymentModal />
     </div>
   );
 }

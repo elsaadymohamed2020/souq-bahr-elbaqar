@@ -18,6 +18,7 @@ import {
   Clock,
   XCircle,
   HelpCircle,
+  ShoppingBag,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -40,6 +41,8 @@ export default function ProductCatalog() {
     getFinalPrice,
     formatPrice,
     getWhatsAppBookingLink,
+    cart,
+    addToCart,
   } = useApp();
 
   const [activeCategory, setActiveCategory] = useState('all');
@@ -385,15 +388,35 @@ export default function ProductCatalog() {
 
                     {/* Button */}
                     {isAvail ? (
-                      <a
-                        href={getWhatsAppBookingLink(product)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-ink hover:bg-slate-800 text-white font-heading font-bold text-sm shadow-sm transition-all active:scale-95 group/btn"
-                      >
-                        <MessageCircle className="w-4 h-4 text-emerald-400 group-hover/btn:scale-110 transition-transform" />
-                        <span>احجز على واتساب</span>
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => addToCart(product)}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl font-heading font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 ${
+                            cart.some((item) => item.code === product.code)
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft'
+                              : 'bg-amber-500 hover:bg-amber-400 text-ink shadow-glow-amber'
+                          }`}
+                          title="أضف لسلة المشتريات والدفع"
+                        >
+                          <ShoppingBag className="w-4 h-4" />
+                          <span>
+                            {cart.some((item) => item.code === product.code)
+                              ? `في السلة (${cart.find((item) => item.code === product.code)?.quantity || 1})`
+                              : 'أضف للسلة'}
+                          </span>
+                        </button>
+
+                        <a
+                          href={getWhatsAppBookingLink(product)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-3 rounded-2xl bg-ink hover:bg-slate-800 text-white flex items-center justify-center transition-all active:scale-95"
+                          title="احجز مباشرة على واتساب"
+                        >
+                          <MessageCircle className="w-4 h-4 text-emerald-400" />
+                        </a>
+                      </div>
                     ) : isHeld ? (
                       <div className="w-full py-2.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-800 font-heading font-bold text-xs text-center">
                         محجوزة مؤقتاً · استفسر عن بدائل

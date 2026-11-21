@@ -1,9 +1,9 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Phone, Clock, LayoutDashboard, Store, ShieldCheck } from 'lucide-react';
+import { Phone, Clock, LayoutDashboard, Store, ShieldCheck, ShoppingBag } from 'lucide-react';
 
 export default function Navbar() {
-  const { viewMode, setViewMode, isOpenNow } = useApp();
+  const { viewMode, setViewMode, isOpenNow, cartCount, setIsCartOpen } = useApp();
 
   return (
     <header className="sticky top-[41px] z-30 glass-header border-b border-slate-200/70 transition-all">
@@ -50,6 +50,23 @@ export default function Navbar() {
             <Phone className="w-3.5 h-3.5 text-amber-600" />
             <span>010 3405 2401</span>
           </a>
+
+          {/* Cart Button */}
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="relative flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-heading font-bold text-xs sm:text-sm bg-amber-500/10 hover:bg-amber-500/20 text-ink border border-amber-400/40 transition-all active:scale-95"
+            title="سلة المشتريات"
+          >
+            <div className="relative">
+              <ShoppingBag className="w-4 h-4 text-amber-600" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-amber-500 text-ink text-[10px] font-black flex items-center justify-center animate-pulse">
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            <span className="hidden sm:inline">السلة</span>
+          </button>
 
           {/* Mode switch button */}
           <button

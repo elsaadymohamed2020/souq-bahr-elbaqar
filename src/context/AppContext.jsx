@@ -22,6 +22,7 @@ const STORAGE_KEYS = {
   CUSTOMERS: 'bb_customers',
   CONVERSATIONS: 'bb_conversations',
   ACTIVITIES: 'bb_activities',
+  CART: 'bb_cart',
 };
 
 function getStored(key, fallback) {
@@ -62,6 +63,12 @@ export function AppProvider({ children }) {
   const [isRecordSaleOpen, setIsRecordSaleOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [waitingCustomerAlert, setWaitingCustomerAlert] = useState(null);
+
+  // Shopping Cart & Payments State
+  const [cart, setCart] = useState(() => getStored(STORAGE_KEYS.CART, []));
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [lastCompletedOrder, setLastCompletedOrder] = useState(null);
 
   // Toast
   const [toastMessage, setToastMessage] = useState(null);
@@ -113,6 +120,10 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities));
   }, [activities]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
+  }, [cart]);
 
   // Toast helper
   const showToast = (message, type = 'success') => {
@@ -351,7 +362,195 @@ export function AppProvider({ children }) {
     setCustomers(DEFAULT_CUSTOMERS);
     setConversations(DEFAULT_CONVERSATIONS);
     setActivities(DEFAULT_ACTIVITIES);
+    setCart([]);
+    setLastCompletedOrder(null);
     showToast('تمت استعادة كل بيانات الديمو للوضع الأصلي!');
+  };
+
+  // Shopping Cart & Calculation Logic
+  const cartItems = cart
+    .map((item) => {
+      const product = products.find((p) => p.code === item.code);
+      if (!product) return null;
+      const finalPrice = getFinalPrice(product);
+      return {
+        product,
+        code: item.code,
+        quantity: item.quantity || 1,
+        finalPrice,
+        subtotal: finalPrice * (item.quantity || 1),
+      };
+    })
+    .filter(Boolean);
+
+  const cartCount = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
+
+  const addToCart = (product, quantity = 1) => {
+    if (product.status === 'sold') {
+      showToast('عذراً، هذه القطعة تم بيعها وغير متاحة حالياً', 'error');
+      return;
+    }
+    setCart((prev) => {
+      const exists = prev.find((item) => item.code === product.code);
+      if (exists) {
+        return prev.map((item) =>
+          item.code === product.code
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      }
+      return [...prev, { code: product.code, quantity }];
+    });
+    showToast(`تمت إضافة "${product.name}" إلى سلة المشتريات! 🛒`);
+  };
+
+  const removeFromCart = (productCode) => {
+    setCart((prev) => prev.filter((item) => item.code !== productCode));
+    showToast('تم حذف المنتج من السلة');
+  };
+
+  const updateCartQuantity = (productCode, delta) => {
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.code === productCode) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean)
+    );
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const getWhatsAppCartBookingLink = (customerInfo = {}) => {
+    if (!cartItems.length) return getGeneralWhatsAppLink();
+    const itemsText = cartItems
+      .map(
+        (item, idx) =>
+          `${idx + 1}. ${item.product.name} (كود: ${item.product.code}) - كمية: ${item.quantity} - السعر: ${formatPrice(item.subtotal)} ج`
+      )
+      .join('\n');
+    const text = `السلام عليكم يا حاج، عايز أطلب المنتجات دي من الموقع:\n\n${itemsText}\n\nالإجمالي المطلوب: ${formatPrice(cartTotal)} جنيه مصري.\nالاسم: ${customerInfo.name || 'عميل المتجر الإلكتروني'}\nرقم الموبايل: ${customerInfo.phone || ''}\nطريقة الاستلام: ${customerInfo.deliveryMethod || 'استلام من الفرع'}\nالعنوان/المدينة: ${customerInfo.address || 'بدون'}\nملاحظات: ${customerInfo.notes || 'لا يوجد'}\nهل المنتجات جاهزة للشحن أو الاستلام؟`;
+    return `https://wa.me/201034052401?text=${encodeURIComponent(text)}`;
+  };
+
+  const processPayment = ({
+    customerName,
+    phone,
+    deliveryMethod,
+    address,
+    paymentMethod,
+    notes,
+    installmentMonths,
+    transferRef,
+  }) => {
+    if (!cartItems.length) return null;
+
+    const orderId = 'BB-ORD-' + Math.floor(100000 + Math.random() * 900000);
+    let startInvoiceNum = Math.max(1041, ...invoices.map((i) => i.n));
+
+    const newInvoices = cartItems.map((item) => {
+      startInvoiceNum += 1;
+      const itemCost = item.product.cost || Math.round(item.finalPrice * 0.7);
+      return {
+        n: startInvoiceNum,
+        item: `${item.product.name} (${item.quantity > 1 ? item.quantity + ' قطع' : 'قطعة واحدة'})`,
+        cust: customerName || 'عميل المتجر الإلكتروني',
+        br: item.product.branch || 'الصالحية',
+        price: item.subtotal,
+        cost: itemCost * item.quantity,
+        pay: paymentMethod || 'دفع إلكتروني',
+        d: 'اليوم',
+      };
+    });
+
+    // Mark products as sold in storefront
+    const purchasedCodes = cartItems.map((ci) => ci.product.code);
+    setProducts((prev) =>
+      prev.map((p) =>
+        purchasedCodes.includes(p.code) ? { ...p, status: 'sold' } : p
+      )
+    );
+
+    // Record Invoices to ERP
+    setInvoices((prev) => [...newInvoices, ...prev]);
+
+    // Update or add customer to CRM
+    if (customerName || phone) {
+      setCustomers((prev) => {
+        const existing = prev.find((c) => c.phone && c.phone === phone);
+        if (existing) {
+          return prev.map((c) =>
+            c.phone === phone
+              ? {
+                  ...c,
+                  deals: (c.deals || 0) + cartItems.length,
+                  spent: (c.spent || 0) + cartTotal,
+                  stage: 'won',
+                  lastContact: 'اليوم (سداد أونلاين)',
+                }
+              : c
+          );
+        }
+        return [
+          {
+            id: 'cust-' + Date.now(),
+            name: customerName || 'عميل المتجر الإلكتروني',
+            phone: phone || '010XXXXXXXX',
+            br: cartItems[0]?.product?.branch || 'الصالحية',
+            stage: 'won',
+            deals: cartItems.length,
+            spent: cartTotal,
+            kw: cartItems.map((ci) => ci.product.name).join(', '),
+            lastContact: 'اليوم (سداد أونلاين)',
+          },
+          ...prev,
+        ];
+      });
+    }
+
+    // Add activity to timeline
+    setActivities((prev) => [
+      {
+        id: Date.now(),
+        type: 'cash',
+        title: `تم سداد طلبية جديدة #${orderId} بقيمة ${formatPrice(cartTotal)} ج (${paymentMethod})`,
+        time: 'الآن',
+        branch: cartItems[0]?.product?.branch || 'الصالحية',
+        color: 'emerald',
+      },
+      ...prev,
+    ]);
+
+    const completedOrder = {
+      orderId,
+      items: [...cartItems],
+      total: cartTotal,
+      paymentMethod,
+      customerName,
+      phone,
+      deliveryMethod,
+      address,
+      notes,
+      date: new Date().toLocaleDateString('ar-EG'),
+      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      invoices: newInvoices.map((inv) => inv.n),
+      transferRef,
+      installmentMonths,
+    };
+
+    setLastCompletedOrder(completedOrder);
+    setCart([]);
+    triggerConfetti();
+    showToast(`تم تأكيد الدفع وإصدار الفواتير للطلب #${orderId} بنجاح! 🎉`, 'success');
+
+    return completedOrder;
   };
 
   return (
@@ -390,6 +589,24 @@ export function AppProvider({ children }) {
         setSelectedCustomer,
         waitingCustomerAlert,
         setWaitingCustomerAlert,
+
+        // Cart & Checkout
+        cart,
+        cartItems,
+        cartCount,
+        cartTotal,
+        isCartOpen,
+        setIsCartOpen,
+        isCheckoutOpen,
+        setIsCheckoutOpen,
+        lastCompletedOrder,
+        setLastCompletedOrder,
+        addToCart,
+        removeFromCart,
+        updateCartQuantity,
+        clearCart,
+        getWhatsAppCartBookingLink,
+        processPayment,
 
         // Toast & Confetti
         toastMessage,
