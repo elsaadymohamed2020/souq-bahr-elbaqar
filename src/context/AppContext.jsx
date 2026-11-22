@@ -77,17 +77,6 @@ export function AppProvider({ children }) {
   const [selectedDealForDetail, setSelectedDealForDetail] = useState(null);
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
 
-  // Bulk Deals & Lots State
-  const [deals, setDeals] = useState(() => {
-    const stored = getStored(STORAGE_KEYS.DEALS, DEFAULT_DEALS);
-    return stored.map((d) => {
-      const def = DEFAULT_DEALS.find((item) => item.code === d.code);
-      return def?.img ? { ...d, img: def.img } : d;
-    });
-  });
-  const [selectedDealForDetail, setSelectedDealForDetail] = useState(null);
-  const [isAddDealOpen, setIsAddDealOpen] = useState(false);
-
   // Shopping Cart & Payments State
   const [cart, setCart] = useState(() => getStored(STORAGE_KEYS.CART, []));
   const [isCartOpen, setIsCartOpen] = useState(false);
