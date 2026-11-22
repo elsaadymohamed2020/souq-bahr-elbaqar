@@ -18,7 +18,7 @@ import {
   Clock,
   XCircle,
   HelpCircle,
-  ShoppingBag,
+  ShoppingCart,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -386,24 +386,24 @@ export default function ProductCatalog() {
                       )}
                     </div>
 
-                    {/* Button */}
+                    {/* Buttons: Add to Cart (Amazon / Shopify style) & WhatsApp */}
                     {isAvail ? (
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => addToCart(product)}
-                          className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl font-heading font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 ${
+                          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-heading font-black text-xs sm:text-sm transition-all active:scale-95 shadow-sm ${
                             cart.some((item) => item.code === product.code)
-                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft'
-                              : 'bg-amber-500 hover:bg-amber-400 text-ink shadow-glow-amber'
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              : 'bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-soft'
                           }`}
-                          title="أضف لسلة المشتريات والدفع"
+                          title="إضافة إلى عربة التسوق"
                         >
-                          <ShoppingBag className="w-4 h-4" />
+                          <ShoppingCart className="w-4 h-4 shrink-0" />
                           <span>
                             {cart.some((item) => item.code === product.code)
-                              ? `في السلة (${cart.find((item) => item.code === product.code)?.quantity || 1})`
-                              : 'أضف للسلة'}
+                              ? `في العربة (${cart.find((item) => item.code === product.code)?.quantity || 1}) ✓`
+                              : 'أضف للعربة'}
                           </span>
                         </button>
 
@@ -411,10 +411,10 @@ export default function ProductCatalog() {
                           href={getWhatsAppBookingLink(product)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-3 rounded-2xl bg-ink hover:bg-slate-800 text-white flex items-center justify-center transition-all active:scale-95"
-                          title="احجز مباشرة على واتساب"
+                          className="p-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-ink flex items-center justify-center transition-all border border-slate-200 active:scale-95"
+                          title="استفسار مباشر عبر واتساب"
                         >
-                          <MessageCircle className="w-4 h-4 text-emerald-400" />
+                          <MessageCircle className="w-4 h-4 text-emerald-600" />
                         </a>
                       </div>
                     ) : isHeld ? (

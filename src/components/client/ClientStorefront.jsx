@@ -9,7 +9,6 @@ import BranchesSection from './BranchesSection';
 import TrustSection from './TrustSection';
 import Footer from './Footer';
 import WhatsAppFloatingBtn from './WhatsAppFloatingBtn';
-import CartFloatingBtn from '../cart/CartFloatingBtn';
 
 export default function ClientStorefront() {
   return (
@@ -23,7 +22,6 @@ export default function ClientStorefront() {
       <TrustSection />
       <Footer />
       <WhatsAppFloatingBtn />
-      <CartFloatingBtn />
       <DealDetailModal />
     </main>
   );

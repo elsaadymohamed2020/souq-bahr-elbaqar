@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Phone, Clock, LayoutDashboard, Store, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { Phone, Clock, LayoutDashboard, Store, ShieldCheck, ShoppingCart } from 'lucide-react';
 
 export default function Navbar() {
   const { viewMode, setViewMode, isOpenNow, cartCount, setIsCartOpen } = useApp();
@@ -59,21 +59,29 @@ export default function Navbar() {
             <span>010 3405 2401</span>
           </a>
 
-          {/* Cart Button */}
+          {/* Cart Button (Amazon / Shopify style) */}
           <button
             onClick={() => setIsCartOpen(true)}
-            className="relative flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-heading font-bold text-xs sm:text-sm bg-amber-500/10 hover:bg-amber-500/20 text-ink border border-amber-400/40 transition-all active:scale-95"
-            title="سلة المشتريات"
+            className="relative flex items-center gap-2 p-2 sm:px-3 sm:py-2 rounded-2xl text-slate-800 hover:text-ink hover:bg-slate-100 transition-all active:scale-95 group"
+            title="عربة التسوق"
+            aria-label="عربة التسوق"
           >
-            <div className="relative">
-              <ShoppingBag className="w-4 h-4 text-amber-600" />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-amber-500 text-ink text-[10px] font-black flex items-center justify-center animate-pulse">
+            <div className="relative flex items-center justify-center">
+              <ShoppingCart className="w-6 h-6 text-slate-800 group-hover:text-amber-500 transition-colors" />
+              {cartCount > 0 ? (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[20px] h-5 px-1 rounded-full bg-amber-500 text-ink font-heading font-black text-[11px] flex items-center justify-center shadow-sm">
                   {cartCount}
+                </span>
+              ) : (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[18px] h-4.5 px-1 rounded-full bg-slate-200 text-slate-600 font-mono font-bold text-[10px] flex items-center justify-center">
+                  0
                 </span>
               )}
             </div>
-            <span className="hidden sm:inline">السلة</span>
+            <div className="hidden sm:flex flex-col text-right leading-none pr-0.5">
+              <span className="text-[10px] text-slate-400 font-medium">عربة</span>
+              <span className="text-xs font-heading font-black text-ink">التسوق</span>
+            </div>
           </button>
 
           {/* Mode switch button */}

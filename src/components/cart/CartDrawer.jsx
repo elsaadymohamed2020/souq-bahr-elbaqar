@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
-  ShoppingBag,
+  ShoppingCart,
   X,
   Trash2,
   Plus,
@@ -68,19 +68,19 @@ export default function CartDrawer() {
         <div className="w-screen max-w-md sm:max-w-lg bg-white shadow-2xl flex flex-col transform transition-transform duration-300 animate-in slide-in-from-right">
           
           {/* Header */}
-          <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+          <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-white">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600">
-                <ShoppingBag className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600">
+                <ShoppingCart className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-heading font-black text-lg text-ink">سلة المشتريات</h2>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-ink text-white">
-                    {cartCount} {cartCount === 1 ? 'قطعة' : 'قطع'}
+                  <h2 className="font-heading font-black text-lg text-ink">عربة التسوق</h2>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-ink">
+                    {cartCount} {cartCount === 1 ? 'منتج' : 'منتجات'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">سوق بحر البقر الكبير · حجز ودفع فوري</p>
+                <p className="text-xs text-slate-400 mt-0.5">سوق بحر البقر الكبير · شراء وحجز فوري</p>
               </div>
             </div>
 
@@ -89,7 +89,7 @@ export default function CartDrawer() {
                 <button
                   onClick={clearCart}
                   className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-1"
-                  title="إفراغ السلة بالكامل"
+                  title="إفراغ العربة بالكامل"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>تفريغ</span>
@@ -97,8 +97,8 @@ export default function CartDrawer() {
               )}
               <button
                 onClick={() => setIsCartOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
-                aria-label="إغلاق السلة"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                aria-label="إغلاق العربة"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -109,11 +109,11 @@ export default function CartDrawer() {
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
             {cartItems.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-12 space-y-4">
-                <div className="w-20 h-20 rounded-3xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-500 shadow-soft">
-                  <ShoppingBag className="w-10 h-10" />
+                <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center text-slate-400">
+                  <ShoppingCart className="w-10 h-10" />
                 </div>
                 <div className="space-y-1.5 max-w-xs">
-                  <h3 className="font-heading font-bold text-lg text-ink">السلة فارغة حالياً</h3>
+                  <h3 className="font-heading font-bold text-lg text-ink">عربة التسوق فارغة حالياً</h3>
                   <p className="text-xs sm:text-sm text-slate-500">
                     تصفح أجهزتنا الأوروبية المستوردة والمعدات، واختر القطع اللي تناسبك لإضافتها هنا.
                   </p>

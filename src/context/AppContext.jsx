@@ -506,7 +506,8 @@ export function AppProvider({ children }) {
       }
       return [...prev, { code: product.code, quantity }];
     });
-    showToast(`تمت إضافة "${product.name}" إلى سلة المشتريات! 🛒`);
+    setIsCartOpen(true);
+    showToast(`تمت إضافة "${product.name}" إلى عربة التسوق!`);
   };
 
   const removeFromCart = (productCode) => {
