@@ -41,7 +41,7 @@ export function AppProvider({ children }) {
   // Navigation & View State
   const [viewMode, setViewMode] = useState('store'); // 'store' | 'admin'
   const [adminTab, setAdminTab] = useState('home'); // 'home' | 'inbox' | 'products' | 'offers' | 'crm' | 'erp'
-  
+
   // Data States (persisted to localStorage)
   const [products, setProducts] = useState(() => {
     const stored = getStored(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS);
@@ -65,6 +65,17 @@ export function AppProvider({ children }) {
   const [isRecordSaleOpen, setIsRecordSaleOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [waitingCustomerAlert, setWaitingCustomerAlert] = useState(null);
+
+  // Bulk Deals & Lots State
+  const [deals, setDeals] = useState(() => {
+    const stored = getStored(STORAGE_KEYS.DEALS, DEFAULT_DEALS);
+    return stored.map((d) => {
+      const def = DEFAULT_DEALS.find((item) => item.code === d.code);
+      return def?.img ? { ...d, img: def.img } : d;
+    });
+  });
+  const [selectedDealForDetail, setSelectedDealForDetail] = useState(null);
+  const [isAddDealOpen, setIsAddDealOpen] = useState(false);
 
   // Bulk Deals & Lots State
   const [deals, setDeals] = useState(() => {
@@ -208,7 +219,7 @@ export function AppProvider({ children }) {
   const addProduct = (newProduct) => {
     const nums = products.map((p) => Number(p.code?.split('-')[1]) || 0);
     const nextCode = `BB-${Math.max(400, ...nums) + 1}`;
-    
+
     const created = {
       ...newProduct,
       code: nextCode,
@@ -600,12 +611,12 @@ export function AppProvider({ children }) {
           return prev.map((c) =>
             c.phone === phone
               ? {
-                  ...c,
-                  deals: (c.deals || 0) + cartItems.length,
-                  spent: (c.spent || 0) + cartTotal,
-                  stage: 'won',
-                  lastContact: 'اليوم (سداد أونلاين)',
-                }
+                ...c,
+                deals: (c.deals || 0) + cartItems.length,
+                spent: (c.spent || 0) + cartTotal,
+                stage: 'won',
+                lastContact: 'اليوم (سداد أونلاين)',
+              }
               : c
           );
         }
