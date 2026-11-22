@@ -35,6 +35,14 @@ export default function Navbar() {
         {/* Status & Actions */}
         <div className="flex items-center gap-3">
           
+          {/* Deals Link */}
+          <a
+            href="#deals"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-xs font-bold text-amber-900 hover:bg-amber-500/25 transition-all"
+          >
+            <span>💼 صفقات اللوطات</span>
+          </a>
+
           {/* Store Hours Pill */}
           <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/80 border border-slate-200/80 text-xs font-semibold text-slate-700">
             <span className={`w-2 h-2 rounded-full ${isOpenNow ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]' : 'bg-rose-500'}`} />

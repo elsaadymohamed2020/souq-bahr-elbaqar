@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { ArrowDownLeft, MapPin, CheckCircle, Flame, ShieldAlert, Sparkles, MessageCircle } from 'lucide-react';
+import { ArrowDownLeft, MapPin, CheckCircle, Flame, ShieldAlert, Sparkles, MessageCircle, Layers } from 'lucide-react';
 
 export default function HeroSection() {
   const { formatPrice } = useApp();
@@ -46,18 +46,26 @@ export default function HeroSection() {
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <a
                 href="#items"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-ink font-heading font-black text-base shadow-glow-amber transition-all active:scale-95"
+                className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-ink font-heading font-black text-sm sm:text-base shadow-glow-amber transition-all active:scale-95"
               >
-                <span>تصفح المعروض والأسعار</span>
-                <ArrowDownLeft className="w-5 h-5" />
+                <span>الأجهزة بالقطعة</span>
+                <ArrowDownLeft className="w-4 h-4" />
+              </a>
+
+              <a
+                href="#deals"
+                className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 font-heading font-black text-sm sm:text-base shadow-sm transition-all active:scale-95"
+              >
+                <Layers className="w-4 h-4 text-amber-400" />
+                <span>الصفقات واللوطات (شروات Total)</span>
               </a>
 
               <a
                 href="#branches"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white border border-white/20 font-heading font-bold text-base transition-all active:scale-95"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white border border-white/20 font-heading font-bold text-sm transition-all active:scale-95"
               >
-                <MapPin className="w-5 h-5 text-amber-400" />
-                <span>عناوين الفروع والخريطة</span>
+                <MapPin className="w-4 h-4 text-amber-400" />
+                <span>الفروع</span>
               </a>
             </div>
 

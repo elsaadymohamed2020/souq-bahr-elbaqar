@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import {
   DEFAULT_PRODUCTS,
   DEFAULT_OFFERS,
+  DEFAULT_DEALS,
   DEFAULT_CONVERSATIONS,
   DEFAULT_CUSTOMERS,
   DEFAULT_INVOICES,
@@ -18,6 +19,7 @@ const AppContext = createContext();
 const STORAGE_KEYS = {
   PRODUCTS: 'bb_products',
   OFFERS: 'bb_offers',
+  DEALS: 'bb_deals',
   INVOICES: 'bb_invoices',
   CUSTOMERS: 'bb_customers',
   CONVERSATIONS: 'bb_conversations',
@@ -63,6 +65,11 @@ export function AppProvider({ children }) {
   const [isRecordSaleOpen, setIsRecordSaleOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [waitingCustomerAlert, setWaitingCustomerAlert] = useState(null);
+
+  // Bulk Deals & Lots State
+  const [deals, setDeals] = useState(() => getStored(STORAGE_KEYS.DEALS, DEFAULT_DEALS));
+  const [selectedDealForDetail, setSelectedDealForDetail] = useState(null);
+  const [isAddDealOpen, setIsAddDealOpen] = useState(false);
 
   // Shopping Cart & Payments State
   const [cart, setCart] = useState(() => getStored(STORAGE_KEYS.CART, []));
@@ -124,6 +131,10 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.DEALS, JSON.stringify(deals));
+  }, [deals]);
 
   // Toast helper
   const showToast = (message, type = 'success') => {
@@ -358,13 +369,106 @@ export function AppProvider({ children }) {
     Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
     setProducts(DEFAULT_PRODUCTS);
     setOffers(DEFAULT_OFFERS);
+    setDeals(DEFAULT_DEALS);
     setInvoices(DEFAULT_INVOICES);
     setCustomers(DEFAULT_CUSTOMERS);
     setConversations(DEFAULT_CONVERSATIONS);
     setActivities(DEFAULT_ACTIVITIES);
     setCart([]);
     setLastCompletedOrder(null);
+    setSelectedDealForDetail(null);
     showToast('تمت استعادة كل بيانات الديمو للوضع الأصلي!');
+  };
+
+  // Deals & Bulk Lots Actions
+  const addDeal = (newDeal) => {
+    const nums = deals.map((d) => Number(d.code?.split('-')[1]) || 0);
+    const nextCode = `DEAL-${Math.max(800, ...nums) + 1}`;
+    const created = {
+      ...newDeal,
+      code: nextCode,
+      status: 'avail',
+      totalPrice: Number(newDeal.totalPrice),
+      estimatedRetail: Number(newDeal.estimatedRetail) || Math.round(Number(newDeal.totalPrice) * 1.3),
+      deposit: Number(newDeal.deposit) || Math.round(Number(newDeal.totalPrice) * 0.1),
+      items: newDeal.items || [],
+      img: newDeal.img || '/images/products/motor.jpg',
+    };
+    setDeals((prev) => [created, ...prev]);
+
+    setActivities((prev) => [
+      {
+        id: Date.now(),
+        type: 'box',
+        title: `تم إدراج صفقة جديدة: ${created.title} (شروة كـ Total: ${formatPrice(created.totalPrice)} ج)`,
+        time: 'الآن',
+        branch: created.branch,
+        color: 'purple',
+      },
+      ...prev,
+    ]);
+
+    showToast(`تم نشر الصفقة ${nextCode} بنجاح!`);
+    triggerConfetti();
+  };
+
+  const updateDealStatus = (code, newStatus) => {
+    setDeals((prev) =>
+      prev.map((d) => (d.code === code ? { ...d, status: newStatus } : d))
+    );
+    const label = newStatus === 'avail' ? 'متاح للمعاينة والتفاوض' : newStatus === 'held' ? 'جاري المعاينة' : 'تم بيع الصفقة';
+    showToast(`تم تحديث حالة الصفقة ${code} إلى "${label}"`);
+
+    if (newStatus === 'sold') {
+      const deal = deals.find((d) => d.code === code);
+      if (deal) {
+        setActivities((prev) => [
+          {
+            id: Date.now(),
+            type: 'cash',
+            title: `تم بيع صفقة بالكامل #${code} بقيمة ${formatPrice(deal.totalPrice)} ج!`,
+            time: 'الآن',
+            branch: deal.branch,
+            color: 'emerald',
+          },
+          ...prev,
+        ]);
+        triggerConfetti();
+      }
+    }
+  };
+
+  const deleteDeal = (code) => {
+    setDeals((prev) => prev.filter((d) => d.code !== code));
+    showToast(`تم حذف الصفقة ${code}`);
+  };
+
+  const getWhatsAppDealLink = (deal, messageType = 'inquire') => {
+    let text = '';
+    if (messageType === 'inspect') {
+      text = `السلام عليكم يا حاج، أنا مهتم بالصفقة (${deal.code}: ${deal.title}) المعروضة على بعضها بسعر ${formatPrice(deal.totalPrice)} جنيه. عايز أحجز موعد للمعاينة على الطبيعة في ${deal.location} وتجربة وفحص المحتويات.`;
+    } else if (messageType === 'offer') {
+      text = `السلام عليكم يا حاج، بخصوص الصفقة (${deal.code}: ${deal.title}) إجمالي ${formatPrice(deal.totalPrice)} ج، عايز أقدم عرض سعر أو أتفاوض على الشروة بالكامل.`;
+    } else {
+      text = `السلام عليكم يا حاج، بخصوص اللوط (${deal.code}: ${deal.title}) المعروض بـ ${formatPrice(deal.totalPrice)} جنيه، هل الصفقة لسه متاحة ولا حد بيعاين فيها؟`;
+    }
+    return `https://wa.me/201034052401?text=${encodeURIComponent(text)}`;
+  };
+
+  const bookDealDeposit = (deal) => {
+    const depositAmount = deal.deposit || 50000;
+    const depositProduct = {
+      code: `DEP-${deal.code}`,
+      name: `عربون تثبيت وحجز: ${deal.title}`,
+      price: depositAmount,
+      cost: 0,
+      branch: deal.branch,
+      status: 'avail',
+      img: deal.img,
+    };
+    addToCart(depositProduct);
+    setIsCartOpen(true);
+    showToast(`تمت إضافة عربون الصفقة (${formatPrice(depositAmount)} ج) إلى السلة! 🛒`);
   };
 
   // Shopping Cart & Calculation Logic
@@ -565,6 +669,7 @@ export function AppProvider({ children }) {
         // Data
         products,
         offers,
+        deals,
         invoices,
         customers,
         conversations,
@@ -589,6 +694,10 @@ export function AppProvider({ children }) {
         setSelectedCustomer,
         waitingCustomerAlert,
         setWaitingCustomerAlert,
+        selectedDealForDetail,
+        setSelectedDealForDetail,
+        isAddDealOpen,
+        setIsAddDealOpen,
 
         // Cart & Checkout
         cart,
@@ -628,6 +737,11 @@ export function AppProvider({ children }) {
         addOffer,
         toggleOffer,
         deleteOffer,
+        addDeal,
+        updateDealStatus,
+        deleteDeal,
+        getWhatsAppDealLink,
+        bookDealDeposit,
         recordSale,
         sendMessage,
         markConversationRead,

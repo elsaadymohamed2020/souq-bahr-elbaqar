@@ -3,6 +3,8 @@ import HeroSection from './HeroSection';
 import QuickAnswers from './QuickAnswers';
 import PromotionsTicker from './PromotionsTicker';
 import ProductCatalog from './ProductCatalog';
+import BulkDealsSection from './BulkDealsSection';
+import DealDetailModal from './DealDetailModal';
 import BranchesSection from './BranchesSection';
 import TrustSection from './TrustSection';
 import Footer from './Footer';
@@ -16,11 +18,13 @@ export default function ClientStorefront() {
       <QuickAnswers />
       <PromotionsTicker />
       <ProductCatalog />
+      <BulkDealsSection />
       <BranchesSection />
       <TrustSection />
       <Footer />
       <WhatsAppFloatingBtn />
       <CartFloatingBtn />
+      <DealDetailModal />
     </main>
   );
 }

@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import AdminHome from './AdminHome';
 import AdminInbox from './AdminInbox';
 import AdminProducts from './AdminProducts';
+import AdminDeals from './AdminDeals';
 import AdminOffers from './AdminOffers';
 import AdminCRM from './AdminCRM';
 import AdminERP from './AdminERP';
@@ -10,6 +11,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Package,
+  Layers,
   Tag,
   Users,
   Coins,
@@ -21,6 +23,7 @@ const ADMIN_TABS = [
   { id: 'home', label: 'الرئيسية', icon: LayoutDashboard },
   { id: 'inbox', label: 'الرسايل', icon: MessageSquare, badgeKey: 'unread' },
   { id: 'products', label: 'المنتجات', icon: Package },
+  { id: 'deals', label: 'الصفقات واللوطات', icon: Layers },
   { id: 'offers', label: 'العروض', icon: Tag },
   { id: 'crm', label: 'العملاء', icon: Users },
   { id: 'erp', label: 'الحسابات', icon: Coins },
@@ -98,6 +101,7 @@ export default function AdminDashboard() {
           {adminTab === 'home' && <AdminHome />}
           {adminTab === 'inbox' && <AdminInbox />}
           {adminTab === 'products' && <AdminProducts />}
+          {adminTab === 'deals' && <AdminDeals />}
           {adminTab === 'offers' && <AdminOffers />}
           {adminTab === 'crm' && <AdminCRM />}
           {adminTab === 'erp' && <AdminERP />}
