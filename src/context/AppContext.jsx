@@ -67,7 +67,13 @@ export function AppProvider({ children }) {
   const [waitingCustomerAlert, setWaitingCustomerAlert] = useState(null);
 
   // Bulk Deals & Lots State
-  const [deals, setDeals] = useState(() => getStored(STORAGE_KEYS.DEALS, DEFAULT_DEALS));
+  const [deals, setDeals] = useState(() => {
+    const stored = getStored(STORAGE_KEYS.DEALS, DEFAULT_DEALS);
+    return stored.map((d) => {
+      const def = DEFAULT_DEALS.find((item) => item.code === d.code);
+      return def?.img ? { ...d, img: def.img } : d;
+    });
+  });
   const [selectedDealForDetail, setSelectedDealForDetail] = useState(null);
   const [isAddDealOpen, setIsAddDealOpen] = useState(false);
 
