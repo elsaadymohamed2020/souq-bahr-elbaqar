@@ -1,440 +1,395 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Grid2x2, Grid3x3, Heart, PackageSearch, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import {
-  Refrigerator,
-  WashingMachine,
-  Flame,
-  Tv,
-  Zap,
-  Gauge,
-  Cpu,
-  DoorClosed,
-  Tag,
-  MapPin,
-  MessageCircle,
-  Sparkles,
-  Search,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  HelpCircle,
-  ShoppingCart,
-} from 'lucide-react';
+import { matchesQuery } from '../../lib/text';
+import { Button, EmptyState, Select, Sheet, Skeleton, Switch } from '../ui';
+import { WhatsAppIcon } from '../common/BrandIcons';
+import ProductCard from './ProductCard';
+import { byNewest } from './StoreRails';
+import { cn } from '../../lib/cn';
 
-const ICON_MAP = {
-  Refrigerator,
-  WashingMachine,
-  Flame,
-  Tv,
-  Zap,
-  Gauge,
-  Cpu,
-  DoorClosed,
-};
+const SORTS = [
+  { id: 'featured', label: 'الأنسب ليك' },
+  { id: 'newest', label: 'الأحدث' },
+  { id: 'price-asc', label: 'السعر: من الأقل' },
+  { id: 'price-desc', label: 'السعر: من الأعلى' },
+  { id: 'discount', label: 'أكبر خصم' },
+];
+const BRANCHES = [
+  { id: 'all', label: 'الفرعين' },
+  { id: 'بحر البقر', label: 'بحر البقر' },
+  { id: 'الصالحية', label: 'الصالحية' },
+];
+const STATUS_RANK = { avail: 0, held: 1, sold: 2 };
+
+function useCatalog() {
+  const app = useApp();
+  const { products, catalogFilters: f, getOfferForProduct, getFinalPrice, wishlist } = app;
+
+  const base = (p, skip = {}) => {
+    if (!skip.cat && f.cat !== 'all' && p.cat !== f.cat) return false;
+    if (f.q && !matchesQuery(`${p.name} ${p.code} ${p.branch} ${p.condition || ''}`, f.q)) return false;
+    if (f.branch !== 'all' && p.branch !== f.branch) return false;
+    if (f.status === 'avail' && p.status !== 'avail') return false;
+    if (f.onlyDiscount && !getOfferForProduct(p)) return false;
+    if (f.maxPrice && getFinalPrice(p) > f.maxPrice) return false;
+    if (f.wishlistOnly && !wishlist.includes(p.code)) return false;
+    return true;
+  };
+
+  const results = useMemo(() => {
+    const list = products.filter((p) => base(p));
+    const saving = (p) => p.price - getFinalPrice(p);
+    switch (f.sort) {
+      case 'newest':
+        return list.sort(byNewest);
+      case 'price-asc':
+        return list.sort((a, b) => getFinalPrice(a) - getFinalPrice(b));
+      case 'price-desc':
+        return list.sort((a, b) => getFinalPrice(b) - getFinalPrice(a));
+      case 'discount':
+        return list.sort((a, b) => saving(b) - saving(a));
+      default:
+        return list.sort(
+          (a, b) =>
+            STATUS_RANK[a.status] - STATUS_RANK[b.status] ||
+            Number(Boolean(b.isNew)) - Number(Boolean(a.isNew)) ||
+            Number(Boolean(b.badge)) - Number(Boolean(a.badge))
+        );
+    }
+  }, [products, f, wishlist, getFinalPrice]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const catCounts = useMemo(() => {
+    const out = { all: 0 };
+    products.forEach((p) => {
+      if (!base(p, { cat: true })) return;
+      out.all += 1;
+      out[p.cat] = (out[p.cat] || 0) + 1;
+    });
+    return out;
+  }, [products, f, wishlist]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const priceMax = useMemo(() => {
+    const prices = products.map((p) => getFinalPrice(p));
+    return Math.ceil(Math.max(1000, ...prices) / 1000) * 1000;
+  }, [products, getFinalPrice]);
+
+  const activeCount =
+    (f.cat !== 'all' ? 1 : 0) +
+    (f.q ? 1 : 0) +
+    (f.branch !== 'all' ? 1 : 0) +
+    (f.status === 'avail' ? 1 : 0) +
+    (f.onlyDiscount ? 1 : 0) +
+    (f.maxPrice ? 1 : 0) +
+    (f.wishlistOnly ? 1 : 0);
+
+  return { ...app, f, results, catCounts, priceMax, activeCount };
+}
+
+function FilterGroup({ title, children }) {
+  return (
+    <fieldset className="space-y-2 border-b border-line pb-5 last:border-0 last:pb-0">
+      <legend className="mb-2 font-heading text-sm font-black text-fg">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
+function RadioRow({ name, checked, onChange, label, count }) {
+  return (
+    <label
+      className={cn(
+        'flex cursor-pointer items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-sm transition-colors',
+        checked ? 'bg-surface-2 font-bold text-fg' : 'text-fg-muted hover:bg-surface-2/60'
+      )}
+    >
+      <span className="flex items-center gap-2.5">
+        <input type="radio" name={name} checked={checked} onChange={onChange} className="h-4 w-4 accent-amber-500" />
+        {label}
+      </span>
+      {typeof count === 'number' ? <span className="num text-xs text-fg-subtle">{count}</span> : null}
+    </label>
+  );
+}
+
+function ToggleRow({ label, icon: Icon, checked, onChange, ariaLabel }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-1 py-1">
+      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-fg">
+        {Icon ? <Icon className="h-4 w-4 text-red-500" aria-hidden="true" /> : null}
+        {label}
+      </span>
+      <Switch checked={checked} onChange={onChange} label={ariaLabel || label} />
+    </div>
+  );
+}
+
+function CatalogFilters({ ctx, idPrefix }) {
+  const { f, updateCatalogFilters, resetCatalogFilters, categories, catCounts, priceMax, formatPrice, wishlist, activeCount } = ctx;
+  return (
+    <div className="space-y-5">
+      <FilterGroup title="دوّر في المعروض">
+        <div className="relative">
+          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle" aria-hidden="true" />
+          <input
+            type="search"
+            value={f.q}
+            onChange={(e) => updateCatalogFilters({ q: e.target.value, preset: 'search' })}
+            placeholder="اسم القطعة أو الكود"
+            aria-label="دوّر باسم القطعة أو الكود"
+            className="h-11 w-full rounded-xl border border-line bg-surface pl-3 pr-9 text-sm text-fg placeholder:text-fg-subtle focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/15"
+          />
+        </div>
+      </FilterGroup>
+
+      <FilterGroup title="القسم">
+        {categories.map((c) => (
+          <RadioRow
+            key={c.id}
+            name={`${idPrefix}-cat`}
+            checked={f.cat === c.id}
+            onChange={() => updateCatalogFilters({ cat: c.id, preset: c.id === 'all' ? 'all' : `cat-${c.id}`, q: '' })}
+            label={c.name}
+            count={catCounts[c.id] || 0}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title="الفرع">
+        {BRANCHES.map((b) => (
+          <RadioRow key={b.id} name={`${idPrefix}-branch`} checked={f.branch === b.id} onChange={() => updateCatalogFilters({ branch: b.id })} label={b.label} />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title="السعر">
+        <div className="flex items-center justify-between text-xs font-bold">
+          <span className="text-fg-muted">لحد</span>
+          <span className="num font-heading text-sm font-black text-fg">{f.maxPrice ? `${formatPrice(f.maxPrice)} ج` : 'أي سعر'}</span>
+        </div>
+        <input
+          type="range"
+          min={1000}
+          max={priceMax}
+          step={500}
+          value={f.maxPrice || priceMax}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            updateCatalogFilters({ maxPrice: v >= priceMax ? null : v });
+          }}
+          aria-label="أقصى سعر"
+          className="w-full accent-amber-500"
+        />
+        <div className="num flex justify-between text-[11px] text-fg-subtle">
+          <span>1,000</span>
+          <span>{formatPrice(priceMax)}</span>
+        </div>
+      </FilterGroup>
+
+      <FilterGroup title="تفضيلات">
+        <ToggleRow label="المتاح بس" checked={f.status === 'avail'} onChange={(v) => updateCatalogFilters({ status: v ? 'avail' : 'all' })} ariaLabel="اعرض المتاح بس" />
+        <ToggleRow label="عليه خصم" checked={f.onlyDiscount} onChange={(v) => updateCatalogFilters({ onlyDiscount: v })} ariaLabel="اعرض اللي عليه خصم بس" />
+        {wishlist.length ? (
+          <ToggleRow label="المفضلة بس" icon={Heart} checked={Boolean(f.wishlistOnly)} onChange={(v) => updateCatalogFilters({ wishlistOnly: v })} ariaLabel="اعرض المفضلة بس" />
+        ) : null}
+      </FilterGroup>
+
+      {activeCount ? (
+        <Button variant="secondary" size="md" block onClick={resetCatalogFilters}>
+          <X className="h-4 w-4" aria-hidden="true" />
+          امسح الفلاتر ({activeCount})
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function ActivePills({ ctx }) {
+  const { f, updateCatalogFilters, categories, formatPrice } = ctx;
+  const pills = [];
+  if (f.q) pills.push({ key: 'q', label: `"${f.q}"`, clear: { q: '', preset: 'all' } });
+  if (f.cat !== 'all') pills.push({ key: 'cat', label: categories.find((c) => c.id === f.cat)?.name, clear: { cat: 'all', preset: 'all' } });
+  if (f.branch !== 'all') pills.push({ key: 'branch', label: `فرع ${f.branch}`, clear: { branch: 'all' } });
+  if (f.status === 'avail') pills.push({ key: 'status', label: 'المتاح بس', clear: { status: 'all' } });
+  if (f.onlyDiscount) pills.push({ key: 'disc', label: 'عليه خصم', clear: { onlyDiscount: false, preset: 'all' } });
+  if (f.maxPrice) pills.push({ key: 'price', label: `لحد ${formatPrice(f.maxPrice)} ج`, clear: { maxPrice: null } });
+  if (f.wishlistOnly) pills.push({ key: 'wish', label: 'المفضلة', clear: { wishlistOnly: false, preset: 'all' } });
+  if (!pills.length) return null;
+  return (
+    <div className="no-scrollbar -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
+      {pills.map((p) => (
+        <button
+          key={p.key}
+          type="button"
+          onClick={() => updateCatalogFilters(p.clear)}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-ink px-3 text-xs font-bold text-white transition-colors hover:bg-ink-700 dark:bg-white dark:text-ink"
+          aria-label={`شيل فلتر ${p.label}`}
+        >
+          {p.label}
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function ProductCatalog() {
-  const {
-    products,
-    categories,
-    offers,
-    getOfferForProduct,
-    getFinalPrice,
-    formatPrice,
-    getWhatsAppBookingLink,
-    cart,
-    addToCart,
-  } = useApp();
-
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterAvailability, setFilterAvailability] = useState('all'); // 'all' | 'avail'
-
-  // Filter products
-  const filteredProducts = products.filter((p) => {
-    const matchesCat = activeCategory === 'all' || p.cat === activeCategory;
-    const matchesSearch =
-      !searchQuery ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.branch.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesAvail = filterAvailability === 'all' || p.status === 'avail';
-    return matchesCat && matchesSearch && matchesAvail;
-  });
-
-  // Active promotional banners & announcements
-  const liveOffers = offers.filter((o) => o.active);
-  const [activeSlide, setActiveSlide] = useState(0);
-
-  const announcementSlides = [
-    ...(liveOffers.length > 0
-      ? liveOffers.map((o) => ({
-          badge: `🔥 خصم ${o.pct}%`,
-          badgeStyle: 'bg-amber-500 text-ink',
-          title: o.title || `خصم ${o.pct}% ساري الآن على المعروض`,
-          desc: `ساري حتى ${o.ends} · الخصم محسوب تلقائياً في الأسعار بالأسفل`,
-          icon: Tag,
-        }))
-      : [
-          {
-            badge: '🔥 عروض مستمرة',
-            badgeStyle: 'bg-amber-500 text-ink',
-            title: 'خصومات مميزة على الأجهزة والمعدات الصناعية',
-            desc: 'تخفيضات خاصة عند شراء أكثر من قطعة للمعرض أو الورش',
-            icon: Tag,
-          },
-        ]),
-    {
-      badge: '✨ وصل حديثاً',
-      badgeStyle: 'bg-brand-blue text-white',
-      title: 'وصول دفعة مواتير Siemens 10 و12 حصان وتلاجات كريازي',
-      desc: 'فحص شامل وبحالة الزيرو — المعاينة بفرع الصالحية وبحر البقر',
-      icon: Sparkles,
-    },
-    {
-      badge: '💬 حجز فوري',
-      badgeStyle: 'bg-emerald-600 text-white',
-      title: 'احجز قطعتك برقم الكود مباشرة على الواتساب',
-      desc: 'اضغط على زر "احجز على واتساب" ويتم تثبيت القطعة باسمك',
-      icon: MessageCircle,
-    },
-  ];
+  const ctx = useCatalog();
+  const { f, results, updateCatalogFilters, resetCatalogFilters, activeCount, getGeneralWhatsAppLink } = ctx;
+  const reduce = useReducedMotion();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dense, setDense] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % announcementSlides.length);
-    }, 3800);
-    return () => clearInterval(timer);
-  }, [announcementSlides.length]);
+    const t = setTimeout(() => setReady(true), 350);
+    return () => clearTimeout(t);
+  }, []);
+
+  const title = f.wishlistOnly ? 'المفضلة' : f.q ? `نتايج "${f.q}"` : 'كل المعروض';
+  const gridCols = cn('grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3', dense && 'xl:grid-cols-4');
 
   return (
-    <section id="items" className="py-16 sm:py-24 max-w-7xl mx-auto px-4 sm:px-6">
-      
-      {/* Section Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200/60 mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>المعروض الآن في الفروع</span>
-          </div>
-          <h2 className="font-heading font-black text-2xl sm:text-4xl text-ink tracking-tight">
-            اختار قطعتك واحجزها فوراً
-          </h2>
-          <p className="text-slate-500 text-sm sm:text-base mt-1">
-            كل قطعة معروضة بسعرها وحالتها الحقيقية، والقطعة اللي بتتباع بيتعلّم عليها فوراً.
-          </p>
-        </div>
+    <section id="items" aria-labelledby="catalog-title" className="mx-auto mt-10 max-w-7xl px-3 sm:mt-14 sm:px-6" data-tour="catalog">
+      <div className="mb-4">
+        <h2 id="catalog-title" className="font-heading text-2xl font-black text-fg sm:text-[28px]">
+          {title}
+        </h2>
+        <p className="mt-1 text-sm text-fg-muted">الأسعار والحالة بتتحدث من لوحة التحكم على طول</p>
+      </div>
 
-        {/* Dynamic Animated Announcements & Offers Card */}
-        <div className="w-full md:w-auto md:min-w-[360px] bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 border border-amber-400/40 rounded-2xl p-4 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm ${announcementSlides[activeSlide].badgeStyle}`}>
-              {announcementSlides[activeSlide].badge}
-            </span>
-            <div className="flex items-center gap-1">
-              {announcementSlides.map((_, i) => (
+      <div className="grid gap-6 lg:grid-cols-[264px_minmax(0,1fr)]">
+        <aside aria-label="فلاتر المعروض" className="hidden lg:block">
+          <div className="no-scrollbar sticky top-[calc(var(--header-h)+16px)] max-h-[calc(100vh-var(--header-h)-32px)] overflow-y-auto rounded-card border border-line bg-surface p-4">
+            <CatalogFilters ctx={ctx} idPrefix="side" />
+          </div>
+        </aside>
+
+        <div className="min-w-0">
+          <div className="mb-3 flex items-center gap-2">
+            <Button variant="secondary" size="md" className="lg:hidden" onClick={() => setSheetOpen(true)}>
+              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              فلتر
+              {activeCount ? (
+                <span className="num flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-black text-ink">{activeCount}</span>
+              ) : null}
+            </Button>
+            <p className="num text-sm font-bold text-fg-muted" aria-live="polite">
+              {results.length} قطعة
+            </p>
+            <div className="mr-auto flex items-center gap-2">
+              <label className="sr-only" htmlFor="sort-select">
+                رتّب حسب
+              </label>
+              <Select id="sort-select" value={f.sort} onChange={(e) => updateCatalogFilters({ sort: e.target.value })} className="h-11 w-[148px] sm:w-[170px]">
+                {SORTS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </Select>
+              <div className="hidden items-center rounded-xl border border-line bg-surface p-1 xl:flex" role="group" aria-label="شكل العرض">
                 <button
-                  key={i}
-                  onClick={() => setActiveSlide(i)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    activeSlide === i ? 'w-4 bg-amber-500' : 'w-1.5 bg-amber-300/70'
-                  }`}
-                  aria-label={`إعلان ${i + 1}`}
-                />
+                  type="button"
+                  aria-pressed={!dense}
+                  aria-label="3 في الصف"
+                  onClick={() => setDense(false)}
+                  className={cn('flex h-8 w-8 items-center justify-center rounded-lg', !dense ? 'bg-surface-2 text-fg' : 'text-fg-subtle hover:text-fg')}
+                >
+                  <Grid2x2 className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={dense}
+                  aria-label="4 في الصف"
+                  onClick={() => setDense(true)}
+                  className={cn('flex h-8 w-8 items-center justify-center rounded-lg', dense ? 'bg-surface-2 text-fg' : 'text-fg-subtle hover:text-fg')}
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <ActivePills ctx={ctx} />
+
+          {!ready ? (
+            <div className={gridCols} aria-hidden="true">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="overflow-hidden rounded-card border border-line bg-surface">
+                  <Skeleton className="aspect-[4/3] w-full rounded-none" />
+                  <div className="space-y-2 p-3">
+                    <Skeleton className="h-3 w-1/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-
-          <div className="flex items-start gap-3 min-h-[44px]">
-            <span className="p-2 rounded-xl bg-amber-500 text-ink shrink-0 mt-0.5 shadow-sm">
-              <Tag className="w-4 h-4 font-bold" />
-            </span>
-            <div className="space-y-0.5">
-              <h4 className="font-heading font-bold text-sm text-ink leading-snug">
-                {announcementSlides[activeSlide].title}
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                {announcementSlides[activeSlide].desc}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="space-y-4 mb-8">
-        
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {categories.map((cat) => {
-            const count =
-              cat.id === 'all'
-                ? products.length
-                : products.filter((p) => p.cat === cat.id).length;
-            const isActive = activeCategory === cat.id;
-
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-heading font-bold whitespace-nowrap transition-all border ${
-                  isActive
-                    ? 'bg-ink text-white border-ink shadow-md'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <span>{cat.name}</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-sans ${
-                    isActive ? 'bg-amber-400 text-ink' : 'bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search & In-stock toggle */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative w-full sm:flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ابحث باسم القطعة (مثلاً: تلاجة، موتور، لحام، شاشة)..."
-              className="w-full pl-4 pr-11 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all placeholder:text-slate-400"
+          ) : results.length ? (
+            <motion.ul layout={!reduce} className={gridCols}>
+              <AnimatePresence initial={false} mode="popLayout">
+                {results.map((p, i) => (
+                  <motion.li
+                    key={p.code}
+                    layout={!reduce}
+                    initial={{ opacity: 0, scale: reduce ? 1 : 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: reduce ? 1 : 0.96, transition: { duration: 0.15 } }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1], delay: Math.min(i, 6) * 0.03 }}
+                  >
+                    <ProductCard product={p} eager={i < 4} />
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </motion.ul>
+          ) : (
+            <EmptyState
+              icon={PackageSearch}
+              title={f.q ? `"${f.q}" مش موجود دلوقتي` : 'مفيش قطع بالفلاتر دي'}
+              description="سيب طلبك على الواتساب، وأول ما القطعة توصل هنبلغك قبل ما تنزل على الصفحة."
+              action={
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="secondary" onClick={resetCatalogFilters}>
+                    امسح الفلاتر
+                  </Button>
+                  <Button
+                    variant="whatsapp"
+                    href={getGeneralWhatsAppLink(
+                      `السلام عليكم يا حاج، أنا بدور على ${f.q || 'قطعة'} ومش لاقيها على الموقع. ممكن تسجلني في قايمة الانتظار وتبلغني أول ما توصل؟`
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <WhatsAppIcon className="h-4 w-4" aria-hidden="true" />
+                    بلغني أول ما توصل
+                  </Button>
+                </div>
+              }
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700"
-              >
-                مسح
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            <button
-              onClick={() => setFilterAvailability(filterAvailability === 'all' ? 'avail' : 'all')}
-              className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold border transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial ${
-                filterAvailability === 'avail'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>المتاح للحجز فقط</span>
-            </button>
-          </div>
+          )}
         </div>
-
       </div>
 
-      {/* Products Grid */}
-      {filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200">
-          <HelpCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="font-heading font-bold text-lg text-ink">لم يتم العثور على قطع تطابق بحثك</h3>
-          <p className="text-slate-500 text-sm mt-1 max-w-sm mx-auto">
-            جرّب تغيير كلمات البحث أو اختر قسماً آخر من الأقسام بالأعلى.
-          </p>
-          <button
-            onClick={() => {
-              setActiveCategory('all');
-              setSearchQuery('');
-              setFilterAvailability('all');
-            }}
-            className="mt-4 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-ink text-xs font-bold"
-          >
-            عرض كل المعروض
-          </button>
+      <Sheet
+        isOpen={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title="فلتر وترتيب"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="secondary" size="lg" onClick={resetCatalogFilters} disabled={!activeCount}>
+              امسح
+            </Button>
+            <Button size="lg" block onClick={() => setSheetOpen(false)}>
+              اعرض {results.length} قطعة
+            </Button>
+          </div>
+        }
+      >
+        <div className="p-5">
+          <CatalogFilters ctx={ctx} idPrefix="sheet" />
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {filteredProducts.map((product) => {
-            const offer = getOfferForProduct(product);
-            const finalPrice = getFinalPrice(product);
-            const hasDiscount = offer && offer.pct > 0;
-            const IconComponent = ICON_MAP[product.icon] || Tag;
-
-            // Status Badge
-            const isAvail = product.status === 'avail';
-            const isHeld = product.status === 'held';
-            const isSold = product.status === 'sold';
-
-            return (
-              <article
-                key={product.code}
-                className={`group bg-white rounded-3xl overflow-hidden border border-slate-200/80 shadow-soft hover:shadow-soft-lg transition-all duration-300 flex flex-col ${
-                  isSold ? 'opacity-85' : ''
-                }`}
-              >
-                {/* Visual Area */}
-                <div className="h-48 bg-slate-100 relative overflow-hidden flex items-center justify-center">
-                  {product.img ? (
-                    <img
-                      src={product.img}
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-3xl bg-white shadow-soft flex items-center justify-center text-ink group-hover:scale-105 transition-transform duration-300 border border-slate-100">
-                      <IconComponent className="w-10 h-10 text-slate-700" />
-                    </div>
-                  )}
-
-                  {/* Top gradient for chip contrast */}
-                  <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/40 via-black/10 to-transparent pointer-events-none" />
-
-                  {/* Status chip */}
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-sm border">
-                    {isAvail && (
-                      <span className="bg-white/90 text-emerald-700 border-white/60 flex items-center gap-1.5 shadow-sm">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        متاح الآن
-                      </span>
-                    )}
-                    {isHeld && (
-                      <span className="bg-white/90 text-amber-800 border-white/60 flex items-center gap-1.5 shadow-sm">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        محجوز لعميل
-                      </span>
-                    )}
-                    {isSold && (
-                      <span className="bg-white/90 text-rose-700 border-white/60 flex items-center gap-1.5 shadow-sm">
-                        <span className="w-2 h-2 rounded-full bg-rose-500" />
-                        تم البيع
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Discount or New Badge */}
-                  {hasDiscount && !isSold && (
-                    <div className="absolute top-3 left-3 bg-amber-500 text-ink font-heading font-black text-xs px-2.5 py-1 rounded-xl shadow-md">
-                      خصم {offer.pct}%
-                    </div>
-                  )}
-
-                  {product.isNew && !hasDiscount && !isSold && (
-                    <div className="absolute top-3 left-3 bg-brand-blue text-white font-heading font-bold text-[11px] px-2.5 py-1 rounded-xl shadow-md">
-                      وصل حديثاً
-                    </div>
-                  )}
-
-                  {/* Item Code badge */}
-                  <div className="absolute bottom-2.5 left-3 text-[11px] font-mono font-bold text-white bg-black/60 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                    {product.code}
-                  </div>
-                </div>
-
-                {/* Details Area */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2">
-                    
-                    {/* Branch and badge */}
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                      <span className="flex items-center gap-1 font-medium text-slate-600">
-                        <MapPin className="w-3.5 h-3.5 text-amber-500" />
-                        فرع {product.branch}
-                      </span>
-                      {product.badge && (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                          {product.badge}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="font-heading font-bold text-base text-ink line-clamp-2 leading-snug group-hover:text-amber-600 transition-colors">
-                      {product.name}
-                    </h3>
-
-                    {/* Condition / brief */}
-                    {product.condition && (
-                      <p className="text-xs text-slate-500 line-clamp-1">
-                        {product.condition}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Price & Booking Action */}
-                  <div className="pt-3 border-t border-slate-100 space-y-3">
-                    <div className="flex items-baseline justify-between">
-                      <div>
-                        <span className="text-xs text-slate-400 block font-medium">السعر المطلوب</span>
-                        <div className="flex items-baseline gap-2">
-                          <span className={`font-heading font-black text-2xl ${isSold ? 'line-through text-slate-400' : 'text-ink'}`}>
-                            {formatPrice(finalPrice)}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-500">جنيه</span>
-                        </div>
-                      </div>
-
-                      {hasDiscount && (
-                        <div className="text-left">
-                          <span className="text-xs text-slate-400 line-through block">
-                            {formatPrice(product.price)} ج
-                          </span>
-                          <span className="text-[11px] font-bold text-emerald-600">
-                            وفرت {formatPrice(product.price - finalPrice)} ج
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Buttons: Add to Cart (Amazon / Shopify style) & WhatsApp */}
-                    {isAvail ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => addToCart(product)}
-                          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-heading font-black text-xs sm:text-sm transition-all active:scale-95 shadow-sm ${
-                            cart.some((item) => item.code === product.code)
-                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                              : 'bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-soft'
-                          }`}
-                          title="إضافة إلى عربة التسوق"
-                        >
-                          <ShoppingCart className="w-4 h-4 shrink-0" />
-                          <span>
-                            {cart.some((item) => item.code === product.code)
-                              ? `في العربة (${cart.find((item) => item.code === product.code)?.quantity || 1}) ✓`
-                              : 'أضف للعربة'}
-                          </span>
-                        </button>
-
-                        <a
-                          href={getWhatsAppBookingLink(product)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-ink flex items-center justify-center transition-all border border-slate-200 active:scale-95"
-                          title="استفسار مباشر عبر واتساب"
-                        >
-                          <MessageCircle className="w-4 h-4 text-emerald-600" />
-                        </a>
-                      </div>
-                    ) : isHeld ? (
-                      <div className="w-full py-2.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-800 font-heading font-bold text-xs text-center">
-                        محجوزة مؤقتاً · استفسر عن بدائل
-                      </div>
-                    ) : (
-                      <div className="w-full py-2.5 rounded-2xl bg-slate-100 text-slate-400 font-heading font-bold text-xs text-center cursor-not-allowed">
-                        تم البيع لعميل
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-
+      </Sheet>
     </section>
   );
 }

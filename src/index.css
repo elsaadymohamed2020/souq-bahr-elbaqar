@@ -2,24 +2,137 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------------------------------------------------
+   Design tokens. One source for light and dark.
+   Values are "r g b" so Tailwind can apply opacity (bg-surface/80).
+------------------------------------------------------------------- */
 @layer base {
+  :root {
+    --bg: 247 248 250;          /* page canvas  #F7F8FA */
+    --surface: 255 255 255;     /* cards, bars */
+    --surface-2: 241 244 248;   /* sunken fields, chips */
+    --surface-3: 230 235 243;   /* pressed / strong fill */
+    --fg: 11 21 43;             /* ink #0B152B */
+    --fg-muted: 82 96 122;      /* secondary copy, AA on canvas */
+    --fg-subtle: 128 141 165;   /* meta, placeholders */
+    --line: 229 231 235;        /* hairline #E5E7EB */
+    --line-strong: 203 211 225;
+    --header-h: 156px;
+    color-scheme: light;
+  }
+
+  .dark {
+    --bg: 6 11 22;
+    --surface: 13 21 40;
+    --surface-2: 20 30 54;
+    --surface-3: 30 43 72;
+    --fg: 236 240 247;
+    --fg-muted: 160 174 198;
+    --fg-subtle: 115 130 158;
+    --line: 32 45 72;
+    --line-strong: 50 65 96;
+    color-scheme: dark;
+  }
+
   * {
-    border-color: #E2E8F0;
+    border-color: rgb(var(--line));
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--header-h);
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    background-color: #F8FAFC;
-    color: #0F172A;
+    background-color: rgb(var(--bg));
+    color: rgb(var(--fg));
     font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3, h4, h5, h6, .font-heading {
     font-family: 'Cairo', sans-serif;
   }
+
+  :focus-visible {
+    outline: 2px solid #F59E0B;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  ::selection {
+    background: #FCD34D;
+    color: #0B152B;
+  }
 }
 
-/* Custom scrollbars */
+@layer components {
+  /* Price and number styling */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Skeleton loader that matches the final layout */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgb(var(--surface-2));
+    border-radius: 0.75rem;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(100%);
+    background: linear-gradient(90deg, transparent, rgb(var(--surface) / 0.7), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+
+  .glass-header {
+    background: rgb(var(--surface) / 0.86);
+    backdrop-filter: saturate(160%) blur(14px);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+  }
+
+  .glass-dark {
+    background: rgba(11, 21, 43, 0.86);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .snap-rail {
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 1rem;
+    overscroll-behavior-x: contain;
+  }
+  .snap-rail > * {
+    scroll-snap-align: start;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+/* Thin scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -28,59 +141,23 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: rgb(var(--line-strong));
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: rgb(var(--fg-subtle));
 }
 
-/* Glassmorphism helpers */
-.glass-header {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-.glass-dark {
-  background: rgba(11, 21, 43, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
-/* Subtle glow animations */
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.02); }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Continuous Marquee Ticker */
-@keyframes ticker-scroll {
-  0% {
-    transform: translate3d(0, 0, 0);
+/* Respect the user's motion setting: keep feedback, drop travel. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
-  100% {
-    transform: translate3d(50%, 0, 0);
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
-}
-
-.animate-ticker {
-  display: flex;
-  width: max-content;
-  animation: ticker-scroll 32s linear infinite;
-  will-change: transform;
-}
-
-.animate-ticker:hover {
-  animation-play-state: paused;
 }

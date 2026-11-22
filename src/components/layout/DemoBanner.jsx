@@ -1,56 +1,76 @@
 import React from 'react';
+import { LayoutDashboard, PlayCircle, RotateCcw, Store } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { Store, LayoutDashboard, RotateCcw, Sparkles } from 'lucide-react';
+import { useTour } from '../../context/TourContext';
 
+/** Slim amber demo bar. Always visible (the owner must know this is a proposal, not a live site). */
 export default function DemoBanner() {
   const { viewMode, setViewMode, resetDemo } = useApp();
+  const { start, active } = useTour();
+
+  const switchView = () => {
+    setViewMode(viewMode === 'store' ? 'admin' : 'store');
+    window.scrollTo({ top: 0 });
+  };
 
   return (
-    <aside aria-label="شريط المعاينة والتبديل" className="sticky top-0 z-40 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-ink shadow-sm border-b border-amber-600/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm font-medium">
-        
-        {/* Left message */}
-        <div className="flex items-center gap-2">
-          <span className="flex h-2 w-2 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ink opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-ink"></span>
+    <aside
+      aria-label="شريط النموذج التجريبي"
+      className="sticky top-0 z-50 h-10 border-b border-amber-600/25 bg-gradient-to-l from-amber-400 via-amber-400 to-amber-500 text-ink"
+    >
+      <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-2 px-3 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2 text-xs font-bold sm:text-[13px]">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ink/60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-ink" />
           </span>
-          <span className="font-bold flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-ink shrink-0" />
-            نموذج تجريبي مقترح لسوق بحر البقر
+          <span className="truncate">
+            <span className="sm:hidden">نموذج تجريبي</span>
+            <span className="hidden sm:inline">نموذج تجريبي مقترح لسوق بحر البقر</span>
           </span>
-          <span className="hidden md:inline text-ink/80 text-xs">
-            (البيانات والأسعار للتوضيح وتحديثها حي مع لوحة التحكم)
+          <span className="hidden truncate text-[11px] font-semibold text-ink/70 lg:inline">
+            الأسعار والبيانات للتوضيح، وبتتحدث حي مع لوحة التحكم
           </span>
         </div>
 
-        {/* Right switchers */}
-        <div className="flex items-center gap-2 mr-auto sm:mr-0">
-          {viewMode === 'store' ? (
-            <button
-              onClick={() => setViewMode('admin')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-xs sm:text-sm"
-            >
-              <LayoutDashboard className="w-4 h-4 text-amber-400" />
-              <span>جرّب لوحة تحكم الإدارة</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => setViewMode('store')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-sm active:scale-95 text-xs sm:text-sm"
-            >
-              <Store className="w-4 h-4 text-emerald-400" />
-              <span>معاينة واجهة المتجر (الزبون)</span>
-            </button>
-          )}
-
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
-            onClick={resetDemo}
-            title="استرجاع البيانات الأصلية للديمو"
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-white/70 hover:bg-white text-ink rounded-xl border border-amber-600/20 font-semibold transition-all active:scale-95 text-xs"
+            type="button"
+            data-tour="tour-launch"
+            onClick={() => start()}
+            disabled={active}
+            className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-ink px-2.5 font-heading text-[11px] font-black text-white shadow-sm transition-[transform,background-color] hover:bg-ink-700 active:scale-[0.97] disabled:opacity-60 sm:text-xs"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-slate-700" />
-            <span className="hidden sm:inline">إعادة ضبط</span>
+            <PlayCircle className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+            ابدأ الجولة
+          </button>
+          <button
+            type="button"
+            onClick={switchView}
+            className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-ink/15 bg-white/70 px-2.5 font-heading text-[11px] font-black text-ink transition-[transform,background-color] hover:bg-white active:scale-[0.97] sm:text-xs"
+          >
+            {viewMode === 'store' ? (
+              <>
+                <LayoutDashboard className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">جرّب لوحة التحكم</span>
+                <span className="sm:hidden">اللوحة</span>
+              </>
+            ) : (
+              <>
+                <Store className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">واجهة الزبون</span>
+                <span className="sm:hidden">الموقع</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => resetDemo()}
+            aria-label="رجّع الديمو لأوله"
+            title="رجّع الديمو لأوله"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-ink/80 transition-colors hover:bg-white/60 hover:text-ink active:scale-[0.97]"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>

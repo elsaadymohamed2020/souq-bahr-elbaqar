@@ -1,25 +1,24 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { MessageCircle } from 'lucide-react';
+import { WhatsAppIcon } from '../common/BrandIcons';
 
+/** Desktop only. On phones the bottom tab bar carries WhatsApp. */
 export default function WhatsAppFloatingBtn() {
   const { getGeneralWhatsAppLink } = useApp();
 
   return (
-    <aside aria-label="محادثة واتساب سريعة" className="fixed bottom-6 left-6 z-40">
+    <aside aria-label="محادثة واتساب سريعة" className="fixed bottom-6 left-6 z-40 hidden lg:block">
       <a
         href={getGeneralWhatsAppLink()}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="تواصل معنا على واتساب"
-        className="group flex items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-heading font-bold text-sm shadow-2xl hover:shadow-emerald-500/50 transition-all duration-300 active:scale-95 border-2 border-white"
+        className="group flex h-14 items-center gap-2.5 rounded-full bg-emerald-600 pl-5 pr-4 font-heading text-sm font-black text-white shadow-soft-lg ring-4 ring-white transition-[transform,background-color] duration-150 hover:-translate-y-0.5 hover:bg-emerald-500 active:scale-[0.97] dark:ring-surface"
       >
-        <span className="relative flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-85"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+        <span className="relative flex">
+          <span className="absolute inset-0 animate-pulse-ring rounded-full bg-white/50" aria-hidden="true" />
+          <WhatsAppIcon className="relative h-6 w-6" aria-hidden="true" />
         </span>
-        <MessageCircle className="w-5 h-5 fill-white" />
-        <span className="hidden sm:inline">كلمنا واتساب</span>
+        كلمنا واتساب
       </a>
     </aside>
   );

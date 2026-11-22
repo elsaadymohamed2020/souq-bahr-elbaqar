@@ -1,536 +1,193 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { CheckCircle2, ClipboardList, Clock3, Coins, Layers, MapPin, Plus, Scale, TrendingDown, Warehouse, XCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import {
-  Layers,
-  Plus,
-  Scale,
-  MapPin,
-  CheckCircle2,
-  Clock,
-  Trash2,
-  TrendingUp,
-  X,
-  Sparkles,
-  Eye,
-  Tag,
-  Building2,
-  AlertCircle,
-} from 'lucide-react';
+import { AnimatedNumber, Badge, Button, EmptyState, FilterChips, SegmentedControl, StatusBadge } from '../ui';
+import { cn } from '../../lib/cn';
+import { ConfirmDelete, Thumb, sum } from './adminShared';
 
-export default function AdminDeals() {
-  const {
-    deals,
-    formatPrice,
-    addDeal,
-    updateDealStatus,
-    deleteDeal,
-    setSelectedDealForDetail,
-    isAddDealOpen,
-    setIsAddDealOpen,
-    branches,
-  } = useApp();
+export const DEAL_LABELS = { avail: 'متاحة', held: 'جاري المعاينة', sold: 'اتباعت' };
 
-  // Form State for Add Deal Modal
-  const [dealForm, setDealForm] = useState({
-    title: '',
-    totalPrice: '',
-    estimatedRetail: '',
-    deposit: '',
-    category: 'معدات ومواتير',
-    branch: 'بحر البقر',
-    location: 'هنجر المخازن العمومي - بحر البقر',
-    weight: 'حوالي 10 طن',
-    itemsCount: '25 قطعة ومعدة',
-    condition: 'فحص شامل وبحالة الفابريكا وتجربة بالكهرباء قبل الشحن',
-    desc: 'صفقة تصفية خط إنتاج كاملة. البيع شروة واحدة كـ Total.',
-    badge: 'صفقة جديدة',
-    items: [
-      { name: 'مواتير سيمنز 15 حصان ألماني', qty: '6 مواتير', spec: 'نحاس أصلي بحالة ممتازة' },
-      { name: 'لوحات تحكم وقواطع شنايدر', qty: '2 لوحة', spec: 'قواطع 630 أمبير' },
-    ],
-  });
+const DEAL_STATUS_OPTIONS = [
+  { id: 'avail', label: 'متاحة', icon: CheckCircle2, activeText: 'text-emerald-700 dark:text-emerald-300' },
+  { id: 'held', label: 'معاينة', icon: Clock3, activeText: 'text-amber-700 dark:text-amber-300' },
+  { id: 'sold', label: 'اتباعت', icon: XCircle, activeText: 'text-red-700 dark:text-red-300' },
+];
 
-  const [newItem, setNewItem] = useState({ name: '', qty: '', spec: '' });
+function StatStrip({ deals }) {
+  const { formatPrice } = useApp();
+  const by = (s) => deals.filter((d) => d.status === s);
+  const sold = by('sold');
+  const stats = [
+    { id: 'vol', label: 'قيمة كل الصفقات', value: sum(deals, (d) => d.totalPrice), money: true, icon: Coins, tone: 'text-fg', sub: `${deals.length} صفقة على الموقع` },
+    { id: 'avail', label: 'متاحة للمعاينة', value: by('avail').length, icon: CheckCircle2, tone: 'text-emerald-700 dark:text-emerald-400', sub: 'مستنية تاجر' },
+    { id: 'held', label: 'جاري المعاينة', value: by('held').length, icon: Clock3, tone: 'text-amber-700 dark:text-amber-400', sub: 'فيه مشتري بيعاين' },
+    { id: 'sold', label: 'اتباعت', value: sold.length, icon: XCircle, tone: 'text-red-700 dark:text-red-400', sub: `بـ ${formatPrice(sum(sold, (d) => d.totalPrice))} ج` },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-card border border-line bg-line lg:grid-cols-4">
+      {stats.map((s) => {
+        const Icon = s.icon;
+        return (
+          <div key={s.id} className="bg-surface p-4 sm:p-5">
+            <p className="flex items-center gap-1.5 text-xs font-bold text-fg-muted">
+              <Icon className={cn('h-4 w-4', s.tone)} aria-hidden="true" />
+              {s.label}
+            </p>
+            <p className="mt-2 font-heading text-xl font-black text-fg sm:text-2xl">
+              <AnimatedNumber value={s.value} format={s.money ? (n) => formatPrice(Math.round(n)) : undefined} />
+              {s.money ? <span className="ms-1 text-xs font-semibold text-fg-subtle">ج</span> : null}
+            </p>
+            <p className="num mt-0.5 truncate text-[11px] text-fg-subtle">{s.sub}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
-  // Summary Metrics
-  const totalVolume = deals.reduce((sum, d) => sum + (d.totalPrice || 0), 0);
-  const availCount = deals.filter((d) => d.status === 'avail').length;
-  const heldCount = deals.filter((d) => d.status === 'held').length;
-  const soldCount = deals.filter((d) => d.status === 'sold').length;
-
-  const handleAddItemToForm = () => {
-    if (!newItem.name.trim()) return;
-    setDealForm({
-      ...dealForm,
-      items: [...dealForm.items, { ...newItem }],
-    });
-    setNewItem({ name: '', qty: '', spec: '' });
-  };
-
-  const handleRemoveItemFromForm = (idx) => {
-    setDealForm({
-      ...dealForm,
-      items: dealForm.items.filter((_, i) => i !== idx),
-    });
-  };
-
-  const handleSubmitDeal = (e) => {
-    e.preventDefault();
-    if (!dealForm.title.trim() || !dealForm.totalPrice) return;
-
-    addDeal({
-      ...dealForm,
-      itemsCount: `${dealForm.items.length} بنود ومعدات رئيسية`,
-    });
-
-    setIsAddDealOpen(false);
-    // Reset form
-    setDealForm({
-      title: '',
-      totalPrice: '',
-      estimatedRetail: '',
-      deposit: '',
-      category: 'معدات ومواتير',
-      branch: 'بحر البقر',
-      location: 'هنجر المخازن العمومي - بحر البقر',
-      weight: 'حوالي 10 طن',
-      itemsCount: '25 قطعة ومعدة',
-      condition: 'فحص شامل وبحالة الفابريكا وتجربة بالكهرباء قبل الشحن',
-      desc: 'صفقة تصفية خط إنتاج كاملة. البيع شروة واحدة كـ Total.',
-      badge: 'صفقة جديدة',
-      items: [
-        { name: 'مواتير سيمنز 15 حصان ألماني', qty: '6 مواتير', spec: 'نحاس أصلي بحالة ممتازة' },
-      ],
-    });
-  };
+function DealCard({ deal }) {
+  const { formatPrice, updateDealStatus, deleteDeal, setSelectedDealForDetail } = useApp();
+  const reduce = useReducedMotion();
+  const retail = Number(deal.estimatedRetail) || 0;
+  const saving = retail > deal.totalPrice ? Math.round(((retail - deal.totalPrice) / retail) * 100) : 0;
+  const itemsCount = deal.items?.length || 0;
 
   return (
-    <div className="space-y-6">
-      
-      {/* Top Header & Metrics */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-heading font-black text-2xl text-ink">
-            إدارة الصفقات واللوطات الكبرى
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            شروات المصانع، لوطات الحديد والمعدات المعروضة على بعضها كـ Total للتجار والمقاولين
-          </p>
+    <motion.article
+      layout={reduce ? false : 'position'}
+      initial={{ opacity: 0, y: reduce ? 0 : 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: reduce ? 1 : 0.98, transition: { duration: 0.15 } }}
+      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+      className="flex min-w-0 flex-col rounded-card border border-line bg-surface shadow-soft-sm transition-shadow duration-200 hover:shadow-soft"
+    >
+      <div className="relative">
+        <Thumb src={deal.img} alt={deal.title} icon={Layers} className="aspect-[16/9] w-full rounded-t-card" iconClassName="h-10 w-10" />
+        <div className="absolute inset-x-3 top-3 flex flex-wrap items-start justify-between gap-2">
+          <StatusBadge status={deal.status} labels={DEAL_LABELS} className="shadow-soft-sm" />
+          {deal.badge ? <Badge tone="glass">{deal.badge}</Badge> : null}
         </div>
-
-        <button
-          onClick={() => setIsAddDealOpen(true)}
-          className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-ink font-heading font-black text-sm shadow-glow-amber transition-all active:scale-95 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>إدراج صفقة / لوط جديد</span>
-        </button>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-soft">
-          <span className="text-xs font-bold text-slate-400 block mb-1">
-            إجمالي قيمة الصفقات (Total Volume)
+      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
+          <span className="num rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-bold" dir="ltr">
+            {deal.code}
           </span>
-          <div className="flex items-baseline gap-1">
-            <span className="font-heading font-black text-2xl text-ink">
-              {formatPrice(totalVolume)}
+          <span className="inline-flex items-center gap-1">
+            <MapPin className="h-3.5 w-3.5 text-fg-subtle" aria-hidden="true" />
+            فرع {deal.branch}
+          </span>
+          {deal.weight ? (
+            <span className="inline-flex items-center gap-1">
+              <Scale className="h-3.5 w-3.5 text-fg-subtle" aria-hidden="true" />
+              {deal.weight}
             </span>
-            <span className="text-xs font-semibold text-slate-500">ج</span>
+          ) : null}
+        </div>
+
+        <h3 className="line-clamp-2 font-heading text-base font-black leading-snug text-fg">{deal.title}</h3>
+
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-bold text-fg-subtle">السعر على بعضه</p>
+            <p className={cn('font-heading text-2xl font-black', deal.status === 'sold' ? 'text-fg-subtle line-through' : 'text-fg')}>
+              <span className="num">{formatPrice(deal.totalPrice)}</span> <span className="text-xs font-semibold text-fg-subtle">ج</span>
+            </p>
           </div>
+          {saving ? (
+            <Badge tone="emerald" icon={TrendingDown}>
+              أقل من السوق <span className="num">{saving}%</span>
+            </Badge>
+          ) : null}
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-soft">
-          <span className="text-xs font-bold text-emerald-600 block mb-1">
-            صفقات متاحة للمعاينة والتفاوض
-          </span>
-          <span className="font-heading font-black text-2xl text-emerald-700">
-            {availCount} صفقات
-          </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Button variant="soft" size="sm" className="h-10" onClick={() => setSelectedDealForDetail(deal)}>
+            <ClipboardList className="h-4 w-4" aria-hidden="true" />
+            كشف المحتويات (<span className="num">{itemsCount}</span> بند)
+          </Button>
+          {deal.location ? (
+            <span className="inline-flex min-w-0 items-center gap-1 text-xs text-fg-muted">
+              <Warehouse className="h-3.5 w-3.5 shrink-0 text-fg-subtle" aria-hidden="true" />
+              <span className="line-clamp-1">{deal.location}</span>
+            </span>
+          ) : null}
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-soft">
-          <span className="text-xs font-bold text-amber-600 block mb-1">
-            صفقات جاري معاينتها لمشتري
-          </span>
-          <span className="font-heading font-black text-2xl text-amber-700">
-            {heldCount} صفقات
-          </span>
-        </div>
-
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-soft">
-          <span className="text-xs font-bold text-slate-500 block mb-1">
-            صفقات تم بيعها وتحصيلها
-          </span>
-          <span className="font-heading font-black text-2xl text-slate-700">
-            {soldCount} صفقات
-          </span>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
+          <SegmentedControl
+            layoutId={`deal-status-${deal.code}`}
+            ariaLabel={`حالة الصفقة ${deal.code}`}
+            options={DEAL_STATUS_OPTIONS}
+            value={deal.status}
+            onChange={(s) => s !== deal.status && updateDealStatus(deal.code, s)}
+            size="md"
+            className="[&>button]:px-3"
+          />
+          <ConfirmDelete itemLabel={`الصفقة ${deal.code}`} onConfirm={() => deleteDeal(deal.code)} />
         </div>
       </div>
+    </motion.article>
+  );
+}
 
-      {/* Deals List */}
-      <div className="space-y-4">
-        {deals.map((deal) => {
-          const isAvail = deal.status === 'avail';
-          const isHeld = deal.status === 'held';
-          const isSold = deal.status === 'sold';
+export default function AdminDeals() {
+  const { deals, setIsAddDealOpen } = useApp();
+  const [status, setStatus] = useState('all');
 
-          return (
-            <div
-              key={deal.code}
-              className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-soft hover:shadow-soft-lg transition-all space-y-4"
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                
-                {/* Title & Info */}
-                <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
-                    <img
-                      src={deal.img || '/images/products/motor.jpg'}
-                      alt={deal.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+  const options = useMemo(
+    () => [
+      { id: 'all', label: 'الكل', count: deals.length, icon: Layers },
+      { id: 'avail', label: 'متاحة', count: deals.filter((d) => d.status === 'avail').length, icon: CheckCircle2 },
+      { id: 'held', label: 'جاري المعاينة', count: deals.filter((d) => d.status === 'held').length, icon: Clock3 },
+      { id: 'sold', label: 'اتباعت', count: deals.filter((d) => d.status === 'sold').length, icon: XCircle },
+    ],
+    [deals]
+  );
 
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                        {deal.code}
-                      </span>
-                      <span className="text-xs font-semibold text-slate-500">
-                        فرع {deal.branch} · {deal.weight}
-                      </span>
-                      {deal.badge && (
-                        <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                          {deal.badge}
-                        </span>
-                      )}
-                    </div>
+  const list = deals.filter((d) => status === 'all' || d.status === status);
 
-                    <h3 className="font-heading font-bold text-base sm:text-lg text-ink">
-                      {deal.title}
-                    </h3>
+  return (
+    <div className="space-y-4 lg:space-y-5">
+      <StatStrip deals={deals} />
 
-                    <p className="text-xs text-slate-500 line-clamp-1 max-w-2xl">
-                      {deal.desc}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div className="lg:text-left shrink-0">
-                  <span className="text-xs text-slate-400 block font-semibold">
-                    السعر المطلوب كـ Total:
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className={`font-heading font-black text-2xl ${isSold ? 'line-through text-slate-400' : 'text-ink'}`}>
-                      {formatPrice(deal.totalPrice)}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-500">جنيه</span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Items Manifest & Status Actions */}
-              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                
-                {/* Items preview tag */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedDealForDetail(deal)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-amber-600" />
-                    <span>عرض كشف المحتويات ({deal.items?.length || 0} بنود)</span>
-                  </button>
-                  <span className="text-xs text-slate-400">
-                    موقع التشوين: {deal.location}
-                  </span>
-                </div>
-
-                {/* Status Switcher & Delete */}
-                <div className="flex items-center gap-2 self-end sm:self-auto">
-                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200/70 text-xs font-bold">
-                    <button
-                      onClick={() => updateDealStatus(deal.code, 'avail')}
-                      className={`px-3 py-1.5 rounded-xl transition-all ${
-                        isAvail
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      متاح
-                    </button>
-                    <button
-                      onClick={() => updateDealStatus(deal.code, 'held')}
-                      className={`px-3 py-1.5 rounded-xl transition-all ${
-                        isHeld
-                          ? 'bg-amber-500 text-ink shadow-xs'
-                          : 'text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      جاري المعاينة
-                    </button>
-                    <button
-                      onClick={() => updateDealStatus(deal.code, 'sold')}
-                      className={`px-3 py-1.5 rounded-xl transition-all ${
-                        isSold
-                          ? 'bg-rose-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      تم البيع
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => deleteDeal(deal.code)}
-                    className="p-2.5 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                    title="حذف الصفقة"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          );
-        })}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <FilterChips ariaLabel="فلتر حالة الصفقات" options={options} value={status} onChange={setStatus} className="min-w-0 sm:flex-1" />
+        <Button variant="primary" onClick={() => setIsAddDealOpen(true)} className="shrink-0 self-start sm:self-auto">
+          <Plus className="h-[18px] w-[18px]" aria-hidden="true" />
+          صفقة جديدة
+        </Button>
       </div>
 
-      {/* Add Deal Modal */}
-      {isAddDealOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 flex items-center justify-center bg-ink/75 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-8 max-h-[92vh] flex flex-col">
-            
-            {/* Header */}
-            <div className="p-5 sm:p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600">
-                  <Layers className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-heading font-black text-lg text-ink">إدراج صفقة / لوط جديد</h3>
-                  <p className="text-xs text-slate-500">عرض شروة كاملة على بعضها كـ Total للتجار والمصانع</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsAddDealOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmitDeal} className="p-6 overflow-y-auto space-y-4 flex-1">
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  عنوان الصفقة بالكامل *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: صفقة تصفية ورش كبرى: 15 موتور + كمرات حديد 10 طن"
-                  value={dealForm.title}
-                  onChange={(e) => setDealForm({ ...dealForm, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    السعر المطلوب كـ Total (جنيه) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="مثال: 750000"
-                    value={dealForm.totalPrice}
-                    onChange={(e) => setDealForm({ ...dealForm, totalPrice: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    القيمة التقديرية للتجزئة (اختياري)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="مثال: 950000"
-                    value={dealForm.estimatedRetail}
-                    onChange={(e) => setDealForm({ ...dealForm, estimatedRetail: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    عربون التثبيت والحجز (جنيه)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="مثال: 50000"
-                    value={dealForm.deposit}
-                    onChange={(e) => setDealForm({ ...dealForm, deposit: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">الفرع</label>
-                  <select
-                    value={dealForm.branch}
-                    onChange={(e) => setDealForm({ ...dealForm, branch: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
-                  >
-                    <option value="بحر البقر">بحر البقر</option>
-                    <option value="الصالحية">الصالحية الجديدة</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">التصنيف</label>
-                  <select
-                    value={dealForm.category}
-                    onChange={(e) => setDealForm({ ...dealForm, category: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm bg-white"
-                  >
-                    <option value="معدات ومواتير">معدات ومواتير</option>
-                    <option value="حديد ومعادن">حديد ومعادن</option>
-                    <option value="تبريد وتجهيزات">تبريد وتجهيزات</option>
-                    <option value="كهرباء ومحولات">كهرباء ومحولات</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">الوزن التقديري</label>
-                  <input
-                    type="text"
-                    placeholder="مثال: 15 طن"
-                    value={dealForm.weight}
-                    onChange={(e) => setDealForm({ ...dealForm, weight: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">مكان المعاينة والتخزين</label>
-                <input
-                  type="text"
-                  placeholder="مثال: هنجر المخازن الرئيسي - بحر البقر"
-                  value={dealForm.location}
-                  onChange={(e) => setDealForm({ ...dealForm, location: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
-                />
-              </div>
-
-              {/* Dynamic Items Builder */}
-              <div className="space-y-2.5 pt-2 border-t border-slate-200">
-                <label className="block text-xs font-bold text-slate-700">
-                  كشف محتويات الصفقة (البنود داخل اللوط):
-                </label>
-
-                {/* Items list */}
-                <div className="space-y-2">
-                  {dealForm.items.map((it, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs"
-                    >
-                      <div>
-                        <span className="font-bold text-ink">{it.name}</span>
-                        <span className="text-slate-400 mr-2">({it.qty})</span>
-                        {it.spec && <span className="text-slate-500 mr-2">· {it.spec}</span>}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItemFromForm(idx)}
-                        className="text-rose-500 hover:text-rose-700 p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Add Item inputs */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                  <input
-                    type="text"
-                    placeholder="اسم البند (مثال: مواتير سيمنز 20 حصان)"
-                    value={newItem.name}
-                    onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-xs"
-                  />
-                  <input
-                    type="text"
-                    placeholder="الكمية (مثال: 5 مواتير أو 8 طن)"
-                    value={newItem.qty}
-                    onChange={(e) => setNewItem({ ...newItem, qty: e.target.value })}
-                    className="px-3 py-2 rounded-xl border border-slate-200 text-xs"
-                  />
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      placeholder="المواصفة"
-                      value={newItem.spec}
-                      onChange={(e) => setNewItem({ ...newItem, spec: e.target.value })}
-                      className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddItemToForm}
-                      className="px-3 py-2 rounded-xl bg-ink text-white font-bold text-xs hover:bg-slate-800 transition-colors"
-                    >
-                      + أضف
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">وصف تفصيلي للصفقة</label>
-                <textarea
-                  rows={2}
-                  value={dealForm.desc}
-                  onChange={(e) => setDealForm({ ...dealForm, desc: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              {/* Submit */}
-              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddDealOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
-                >
-                  إلغاء
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-ink font-heading font-black text-xs shadow-glow-amber transition-all"
-                >
-                  نشر الصفقة على الموقع فوراً
-                </button>
-              </div>
-
-            </form>
-
-          </div>
+      {list.length ? (
+        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          <AnimatePresence initial={false}>
+            {list.map((deal) => (
+              <DealCard key={deal.code} deal={deal} />
+            ))}
+          </AnimatePresence>
         </div>
+      ) : (
+        <EmptyState
+          icon={Layers}
+          title={deals.length ? 'مفيش صفقات بالحالة دي' : 'لسه مفيش صفقات'}
+          description={deals.length ? 'جرّب حالة تانية.' : 'نزّل أول لوط أو شروة وهتظهر للتجار على الموقع.'}
+          action={
+            deals.length ? (
+              <Button variant="secondary" onClick={() => setStatus('all')}>
+                شوف كل الصفقات
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={() => setIsAddDealOpen(true)}>
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                صفقة جديدة
+              </Button>
+            )
+          }
+        />
       )}
-
     </div>
   );
 }

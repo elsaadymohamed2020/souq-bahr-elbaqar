@@ -1,5 +1,12 @@
-// البيانات الافتراضية الأولية — سوق بحر البقر الكبير
-// تمثل البيانات المعروضة في الديمو، متصلة بالتخزين المحلي لتحديث حي وتفاعلي
+// البيانات الافتراضية الأولية: سوق بحر البقر الكبير
+// بيانات وهمية للعرض، متصلة بالتخزين المحلي لتحديث حي وتفاعلي
+
+// تاريخ بعد N يوم بصيغة YYYY-MM-DD (عشان عرض الديمو يفضل شغال وقت العرض)
+export const inDays = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
 
 export const CATEGORIES = [
   { id: "all", name: "كل المعروض", icon: "Grid" },
@@ -50,7 +57,7 @@ export const DEFAULT_PRODUCTS = [
     price: 14500,
     cost: 11000,
     status: "avail",
-    condition: "مستورد استعمال خفيف — فحص شامل وضمان تشغيل",
+    condition: "مستورد استعمال خفيف، فحص شامل وضمان تشغيل",
     badge: "الأكثر طلباً",
   },
   {
@@ -63,7 +70,7 @@ export const DEFAULT_PRODUCTS = [
     price: 9800,
     cost: 7200,
     status: "avail",
-    condition: "بحالة الزيرو — موتور أصلي لم يُفك",
+    condition: "بحالة الزيرو، موتور أصلي لم يُفك",
   },
   {
     code: "BB-103",
@@ -99,7 +106,7 @@ export const DEFAULT_PRODUCTS = [
     price: 18000,
     cost: 12500,
     status: "avail",
-    condition: "استيراد ألمانيا — ملف نحاس صافي للورش والمصانع",
+    condition: "استيراد ألمانيا، ملف نحاس صافي للورش والمصانع",
     badge: "مستورد أصلي",
   },
   {
@@ -146,7 +153,7 @@ export const DEFAULT_OFFERS = [
     scope: "cat",
     target: "ind",
     pct: 10,
-    ends: "2026-11-30",
+    ends: inDays(7),
     active: true,
     title: "خصم 10% على قسم المعدات الصناعية",
     desc: "عرض محدود لأصحاب الورش والمقاولين حتى نهاية الشهر",
@@ -187,7 +194,7 @@ export const DEFAULT_CONVERSATIONS = [
       { f: "c", t: "فين المكان بالظبط يا غالي؟ أنا مسافر وجاي من المعادي مخصوص.", tm: "10:37" },
       {
         f: "bot",
-        t: "أهلاً يا كريم، منورنا مقدماً! 👋\nفرع الصالحية الجديدة على الخريطة: maps.app.goo.gl/LhtYGJDiZQWQ2QDh7\nفرع بحر البقر الرئيسي: قرية 3 بجوار المسجد الكبير مركز الحسينية: maps.app.goo.gl/fhwNC2Zct37i7MXb9\nالمواعيد يومياً من 9 الصبح لـ 5 المغرب، ورقم الحجز: 01034052401.",
+        t: "أهلاً يا كريم، منورنا مقدماً!\nفرع الصالحية الجديدة على الخريطة: maps.app.goo.gl/LhtYGJDiZQWQ2QDh7\nفرع بحر البقر الرئيسي: قرية 3 بجوار المسجد الكبير مركز الحسينية: maps.app.goo.gl/fhwNC2Zct37i7MXb9\nالمواعيد يومياً من 9 الصبح لـ 5 المغرب، ورقم الحجز: 01034052401.",
         tm: "10:37",
       },
     ],
@@ -234,7 +241,7 @@ export const DEFAULT_CONVERSATIONS = [
       { f: "c", t: "الغسالة الـ 10 كيلو عاملة كام وعليها ضمان إيه؟", tm: "10:08" },
       {
         f: "bot",
-        t: "أهلاً بحضرتك يا فندم 👋\nالغسالة فوق أوتوماتيك 10 كيلو (كود BB-102) سعرها 9,800 جنيه ولسه متاحة بفرع الصالحية ومفحوصة تماماً.\nتقدري تشوفي صورها وتفاصيلها هنا وتدوسي احجز: [لينك الموقع]",
+        t: "أهلاً بحضرتك يا فندم\nالغسالة فوق أوتوماتيك 10 كيلو (كود BB-102) سعرها 9,800 جنيه ولسه متاحة بفرع الصالحية ومفحوصة تماماً.\nتقدري تشوفي صورها وتفاصيلها هنا وتدوسي احجز: [لينك الموقع]",
         tm: "10:08",
       },
     ],
@@ -482,7 +489,7 @@ export const DEFAULT_DEALS = [
     status: "avail", // 'avail' | 'held' | 'sold'
     weight: "حوالي 14 طن",
     itemsCount: "48 قطعة ومعدة كبرى",
-    condition: "بحالة الفابريكا — فحص شامل وضمان تشغيل وتجربة على الطبيعة بالمخزن",
+    condition: "بحالة الفابريكا، فحص شامل وضمان تشغيل وتجربة على الطبيعة بالمخزن",
     desc: "صفقة كاملة واردة من مزاد تصفية خط إنتاج مصنع غزل ونسيج بمدينة 6 أكتوبر. البيع شروة واحدة كـ Total بخصم تصفية فوري، مع إمكانية تجربة وتشغيل جميع المواتير في الهنجر قبل التحميل.",
     badge: "صفقة سوبر لقطة",
     img: "/images/deals/factory-lot.jpg",
@@ -528,7 +535,7 @@ export const DEFAULT_DEALS = [
     status: "held",
     weight: "22 جهاز ومعدة كبرى",
     itemsCount: "22 قطعة وتجهيز",
-    condition: "استعمال خفيف فنادق 5 نجوم — ستانلس ستيل 304 نقي وضمان تشغيل",
+    condition: "استعمال خفيف فنادق 5 نجوم، ستانلس ستيل 304 نقي وضمان تشغيل",
     desc: "لوط كامل لتجهيزات مطبخ وتبريد فندقي كبير. البيع شروة واحدة كـ Total للتجار وأصحاب المطاعم والمعارض، المعاينة والتجربة بمخزن بحر البقر.",
     badge: "محجوز للمعاينة",
     img: "/images/deals/kitchen-lot.jpg",
@@ -560,4 +567,38 @@ export const DEFAULT_DEALS = [
       { name: "كابلات نحاس مسلح قطاعات 3×150+70 ملم جهد متوسط", qty: "2.5 طن", spec: "بكرات أصلية خالية من أي لحامات" },
     ],
   },
+];
+
+// الشحن لحد البيت (أسعار تقريبية للعرض، بتتأكد مع الفرع)
+export const ITEM_SIZES = [
+  { id: "small", name: "قطعة صغيرة", desc: "شاشة، مكينة لحام، موتور صغير" },
+  { id: "large", name: "جهاز كبير", desc: "تلاجة، غسالة، بوتاجاز، ديب فريزر" },
+  { id: "heavy", name: "معدة تقيلة أو لوط", desc: "كمبروسر، مولد، شروة كاملة" },
+];
+
+export const SHIPPING_ZONES = [
+  { id: "sharqia", name: "الشرقية (الزقازيق، الحسينية، فاقوس)", days: "نفس اليوم", prices: { small: [150, 300], large: [250, 450], heavy: [500, 900] } },
+  { id: "10th", name: "العاشر من رمضان", days: "يوم واحد", prices: { small: [250, 400], large: [400, 650], heavy: [800, 1300] } },
+  { id: "ismailia", name: "الإسماعيلية", days: "يوم واحد", prices: { small: [250, 400], large: [400, 700], heavy: [900, 1400] } },
+  { id: "dakahlia", name: "الدقهلية (المنصورة)", days: "يوم أو يومين", prices: { small: [300, 500], large: [500, 800], heavy: [1000, 1600] } },
+  { id: "suez", name: "السويس وبورسعيد", days: "يومين", prices: { small: [350, 550], large: [550, 900], heavy: [1100, 1800] } },
+  { id: "qalyubia", name: "القليوبية (بنها، شبرا الخيمة)", days: "يومين", prices: { small: [350, 550], large: [550, 850], heavy: [1100, 1800] } },
+  { id: "cairo", name: "القاهرة والجيزة (المعادي، مدينة نصر)", days: "يومين", prices: { small: [400, 600], large: [600, 950], heavy: [1200, 2000] } },
+  { id: "beheira", name: "البحيرة (دمنهور)", days: "2 لـ 3 أيام", prices: { small: [600, 900], large: [900, 1400], heavy: [1800, 2800] } },
+  { id: "alex", name: "الإسكندرية", days: "3 أيام", prices: { small: [700, 1000], large: [1000, 1500], heavy: [2000, 3000] } },
+];
+
+// شريط الأقسام في الهيدر: كل زرار بيضبط فلتر الكتالوج
+export const CATEGORY_PRESETS = [
+  { id: "all", label: "كل المعروض", icon: "LayoutGrid", filters: { cat: "all", q: "" } },
+  { id: "deals", label: "عروض النهارده", icon: "Flame", filters: { onlyDiscount: true }, accent: true },
+  { id: "fridge", label: "تلاجات", icon: "Refrigerator", filters: { cat: "home", q: "تلاجة" } },
+  { id: "washer", label: "غسالات", icon: "WashingMachine", filters: { cat: "home", q: "غسالة" } },
+  { id: "stove", label: "بوتاجازات", icon: "CookingPot", filters: { cat: "home", q: "بوتاجاز" } },
+  { id: "tv", label: "شاشات", icon: "Tv", filters: { cat: "home", q: "شاشة" } },
+  { id: "ind", label: "معدات صناعية", icon: "Factory", filters: { cat: "ind", q: "" } },
+  { id: "motor", label: "مواتير", icon: "Cog", filters: { cat: "ind", q: "موتور" } },
+  { id: "welder", label: "مكن لحام", icon: "Zap", filters: { cat: "ind", q: "لحام" } },
+  { id: "wood", label: "موبيليا وأبواب", icon: "DoorClosed", filters: { cat: "wood", q: "" } },
+  { id: "lots", label: "لوطات وشروات", icon: "Layers", section: "deals" },
 ];

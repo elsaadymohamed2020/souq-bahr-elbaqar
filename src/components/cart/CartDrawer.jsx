@@ -1,20 +1,186 @@
-import React, { useEffect } from 'react';
+import React, { forwardRef } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AlertCircle, ArrowLeft, BadgeCheck, MapPin, Minus, Plus, ShieldCheck, ShoppingCart, Trash2, Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import {
-  ShoppingCart,
-  X,
-  Trash2,
-  Plus,
-  Minus,
-  ArrowLeft,
-  ShieldCheck,
-  CreditCard,
-  MessageCircle,
-  Truck,
-  Building2,
-  Tag,
-  AlertCircle,
-} from 'lucide-react';
+import { WhatsAppIcon } from '../common/BrandIcons';
+import { Badge, Button, EmptyState, Sheet, StatusBadge } from '../ui';
+import { scrollToId } from '../../lib/hooks';
+import { cn } from '../../lib/cn';
+import { Pieces, Thumb } from './CheckoutParts';
+import { cartOriginalTotal, isDepositCode } from './checkoutUtils';
+
+const EASE = [0.16, 1, 0.3, 1];
+
+function QtyStepper({ value, name, onDec, onInc }) {
+  const btn =
+    'flex h-10 w-10 items-center justify-center rounded-lg text-fg transition-[background-color,transform] duration-150 hover:bg-surface active:scale-90 disabled:pointer-events-none disabled:opacity-35';
+  return (
+    <div role="group" aria-label={`كمية ${name}`} className="flex shrink-0 items-center rounded-xl border border-line bg-surface-2 p-0.5">
+      <button type="button" onClick={onDec} disabled={value <= 1} aria-label="قلّل الكمية" className={btn}>
+        <Minus className="h-4 w-4" aria-hidden="true" />
+      </button>
+      <span className="num w-7 text-center font-heading text-sm font-black text-fg" aria-live="polite">
+        {value}
+      </span>
+      <button type="button" onClick={onInc} aria-label="زوّد الكمية" className={btn}>
+        <Plus className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+const CartItemRow = forwardRef(function CartItemRow({ item, onOpen }, ref) {
+  const { formatPrice, updateCartQuantity, removeFromCart } = useApp();
+  const reduce = useReducedMotion();
+  const { product, code, quantity, finalPrice, subtotal } = item;
+  const deposit = isDepositCode(code);
+  const original = Number(product.price) || finalPrice;
+  const saved = original - finalPrice;
+  const sold = product.status === 'sold';
+
+  const thumb = (
+    <Thumb
+      product={product}
+      className="h-full w-full"
+      imgClassName={cn('transition-transform duration-300 ease-out', !deposit && 'group-hover/thumb:scale-105', sold && 'grayscale-[70%]')}
+    />
+  );
+
+  return (
+    <motion.li
+      ref={ref}
+      layout={!reduce}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, x: 56, transition: { duration: 0.2, ease: 'easeIn' } }}
+      transition={{ duration: 0.28, ease: EASE }}
+      className="rounded-card border border-line bg-surface p-3 shadow-soft-sm"
+    >
+      <div className="flex gap-3">
+        {deposit ? (
+          <span className="aspect-[4/3] w-[92px] shrink-0 self-start overflow-hidden rounded-xl sm:w-28">{thumb}</span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onOpen(code)}
+            aria-label={`شوف تفاصيل ${product.name}`}
+            className="group/thumb aspect-[4/3] w-[92px] shrink-0 self-start overflow-hidden rounded-xl sm:w-28"
+          >
+            {thumb}
+          </button>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-1">
+            <h3 className="line-clamp-2 min-w-0 flex-1 font-heading text-[13px] font-bold leading-snug text-fg sm:text-sm">
+              {deposit ? (
+                product.name
+              ) : (
+                <button type="button" onClick={() => onOpen(code)} className="rounded text-right transition-colors hover:text-brand-blue dark:hover:text-blue-400">
+                  {product.name}
+                </button>
+              )}
+            </h3>
+            <button
+              type="button"
+              onClick={() => removeFromCart(code)}
+              aria-label={`شيل ${product.name} من السلة`}
+              title="شيل من السلة"
+              className="-ml-1.5 -mt-1.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-fg-subtle transition-[background-color,color,transform] duration-150 hover:bg-red-50 hover:text-red-600 active:scale-90 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+            >
+              <Trash2 className="h-[18px] w-[18px]" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-fg-subtle">
+            {deposit ? (
+              <Badge tone="amber" size="xs">
+                عربون حجز
+              </Badge>
+            ) : (
+              <span className="num rounded-md bg-surface-2 px-1.5 py-0.5 font-bold text-fg-muted" dir="ltr">
+                {code}
+              </span>
+            )}
+            {product.branch ? (
+              <span className="inline-flex min-w-0 items-center gap-0.5 font-semibold">
+                <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                فرع {product.branch}
+              </span>
+            ) : null}
+            {product.status && product.status !== 'avail' ? <StatusBadge status={product.status} size="xs" /> : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="num font-heading text-base font-black text-fg">
+              {formatPrice(finalPrice)} <span className="text-[11px] font-bold text-fg-muted">ج</span>
+            </span>
+            {saved > 0 ? (
+              <span className="num text-xs text-fg-subtle line-through">
+                <span className="sr-only">بدل </span>
+                {formatPrice(original)}
+              </span>
+            ) : null}
+          </div>
+          {quantity > 1 ? (
+            <p className="num mt-0.5 text-[11px] font-semibold text-fg-muted">
+              الإجمالي {formatPrice(subtotal)} ج
+            </p>
+          ) : saved > 0 ? (
+            <p className="num mt-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">وفّرت {formatPrice(saved)} ج</p>
+          ) : null}
+        </div>
+        <QtyStepper value={quantity} name={product.name} onDec={() => updateCartQuantity(code, -1)} onInc={() => updateCartQuantity(code, 1)} />
+      </div>
+    </motion.li>
+  );
+});
+
+function Suggestions({ items, onOpen }) {
+  const { formatPrice, addToCart } = useApp();
+  return (
+    <section aria-labelledby="cart-suggest-title" className="pt-1">
+      <h3 id="cart-suggest-title" className="mb-2.5 font-heading text-sm font-black text-fg">
+        ممكن يعجبك كمان
+      </h3>
+      <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        {items.map(({ product: p, final, pct }, i) => (
+          <li key={p.code} className={cn('flex flex-col overflow-hidden rounded-xl border border-line bg-surface', i === 2 && 'hidden sm:flex')}>
+            <button type="button" onClick={() => onOpen(p.code)} aria-label={`شوف تفاصيل ${p.name}`} className="group/sg relative block aspect-[4/3] w-full overflow-hidden">
+              <Thumb product={p} className="h-full w-full" imgClassName="transition-transform duration-300 ease-out group-hover/sg:scale-105" />
+              {pct ? (
+                <span className="num absolute bottom-1.5 right-1.5 rounded-md bg-amber-500 px-1.5 py-0.5 font-heading text-[10px] font-black text-ink">-{pct}%</span>
+              ) : null}
+            </button>
+            <div className="flex flex-1 flex-col p-2">
+              <p className="line-clamp-2 min-h-[2.6em] text-[11px] font-bold leading-snug text-fg">{p.name}</p>
+              <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
+                <span className="num font-heading text-sm font-black text-fg">
+                  {formatPrice(final)} <span className="text-[10px] font-bold text-fg-muted">ج</span>
+                </span>
+                {final < p.price ? <span className="num text-[10px] text-fg-subtle line-through">{formatPrice(p.price)}</span> : null}
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-2 h-10 w-full"
+                onClick={() => addToCart(p, 1, { silent: true })}
+                aria-label={`أضف ${p.name} للسلة`}
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                أضف
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 export default function CartDrawer() {
   const {
@@ -25,259 +191,174 @@ export default function CartDrawer() {
     cartCount,
     cartTotal,
     formatPrice,
-    updateCartQuantity,
-    removeFromCart,
     clearCart,
+    addToCart,
     getWhatsAppCartBookingLink,
+    openQuickView,
+    products,
+    getFinalPrice,
+    getOfferForProduct,
+    viewMode,
+    setViewMode,
+    showToast,
   } = useApp();
+  const reduce = useReducedMotion();
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isCartOpen) setIsCartOpen(false);
-    };
-    if (isCartOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isCartOpen, setIsCartOpen]);
+  const close = () => setIsCartOpen(false);
+  const hasItems = cartItems.length > 0;
+  const savings = Math.max(0, cartOriginalTotal(cartItems) - cartTotal);
+  const soldCount = cartItems.filter((i) => i.product.status === 'sold').length;
 
-  if (!isCartOpen) return null;
+  // A few available pieces not in the cart: same category first, then the biggest discount.
+  let suggestions = [];
+  if (isCartOpen) {
+    const inCart = new Set(cartItems.map((i) => i.code));
+    const cats = new Set(cartItems.map((i) => i.product.cat).filter(Boolean));
+    suggestions = products
+      .filter((p) => p.status === 'avail' && !inCart.has(p.code))
+      .map((p) => {
+        const final = getFinalPrice(p);
+        return { product: p, final, pct: getOfferForProduct(p)?.pct || 0, score: (cats.has(p.cat) ? 2 : 0) + (final < p.price ? 1 : 0), saved: p.price - final };
+      })
+      .sort((a, b) => b.score - a.score || b.saved - a.saved)
+      .slice(0, 3);
+  }
 
-  const handleProceedToCheckout = () => {
-    setIsCartOpen(false);
+  const openProduct = (code) => {
+    close();
+    openQuickView(code);
+  };
+
+  const goCheckout = () => {
+    close();
     setIsCheckoutOpen(true);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-ink/60 backdrop-blur-sm transition-opacity duration-300 animate-in fade-in"
-        onClick={() => setIsCartOpen(false)}
-        aria-hidden="true"
-      />
+  const browse = () => {
+    close();
+    const switching = viewMode !== 'store';
+    if (switching) setViewMode('store');
+    setTimeout(() => scrollToId('items'), switching ? 420 : 80);
+  };
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10 sm:pl-16">
-        <div className="w-screen max-w-md sm:max-w-lg bg-white shadow-2xl flex flex-col transform transition-transform duration-300 animate-in slide-in-from-right">
-          
-          {/* Header */}
-          <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-white">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-600">
-                <ShoppingCart className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="font-heading font-black text-lg text-ink">عربة التسوق</h2>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-ink">
-                    {cartCount} {cartCount === 1 ? 'منتج' : 'منتجات'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">سوق بحر البقر الكبير · شراء وحجز فوري</p>
-              </div>
-            </div>
+  const handleClear = () => {
+    const snapshot = cartItems.map(({ product, quantity }) => ({ product, quantity }));
+    clearCart();
+    showToast('السلة اتفضت', 'info', {
+      action: {
+        label: 'رجّعها',
+        onClick: () => snapshot.forEach(({ product, quantity }) => addToCart(product, quantity, { silent: true })),
+      },
+    });
+  };
 
-            <div className="flex items-center gap-1">
-              {cartItems.length > 0 && (
-                <button
-                  onClick={clearCart}
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-1"
-                  title="إفراغ العربة بالكامل"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>تفريغ</span>
-                </button>
-              )}
-              <button
-                onClick={() => setIsCartOpen(false)}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                aria-label="إغلاق العربة"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Body Content */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
-            {cartItems.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center py-12 space-y-4">
-                <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center text-slate-400">
-                  <ShoppingCart className="w-10 h-10" />
-                </div>
-                <div className="space-y-1.5 max-w-xs">
-                  <h3 className="font-heading font-bold text-lg text-ink">عربة التسوق فارغة حالياً</h3>
-                  <p className="text-xs sm:text-sm text-slate-500">
-                    تصفح أجهزتنا الأوروبية المستوردة والمعدات، واختر القطع اللي تناسبك لإضافتها هنا.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsCartOpen(false)}
-                  className="px-6 py-2.5 rounded-xl bg-ink text-white text-xs font-bold hover:bg-slate-800 transition-colors"
-                >
-                  تصفح المعروض الآن
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Free pickup alert */}
-                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/70 flex items-center gap-2.5 text-emerald-800 text-xs font-semibold">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>معاينة وتجربة مجانية بالأجهزة في فروعنا قبل استلامها!</span>
-                </div>
-
-                {/* Items list */}
-                <div className="space-y-3">
-                  {cartItems.map(({ product, quantity, finalPrice, subtotal }) => (
-                    <div
-                      key={product.code}
-                      className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-sm hover:border-slate-300 transition-all flex gap-3.5 items-center"
-                    >
-                      {/* Product Thumbnail */}
-                      <div className="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100 flex items-center justify-center">
-                        {product.img ? (
-                          <img
-                            src={product.img}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Tag className="w-6 h-6 text-slate-400" />
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-heading font-bold text-xs sm:text-sm text-ink truncate">
-                            {product.name}
-                          </h4>
-                          <button
-                            onClick={() => removeFromCart(product.code)}
-                            className="text-slate-300 hover:text-rose-500 transition-colors p-1"
-                            title="حذف القطعة"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                          <span className="font-mono font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                            {product.code}
-                          </span>
-                          <span>·</span>
-                          <span>فرع {product.branch}</span>
-                        </div>
-
-                        {/* Price & Quantity Controls */}
-                        <div className="flex items-center justify-between mt-2.5">
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="font-heading font-black text-sm text-ink">
-                              {formatPrice(subtotal)}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-semibold">جنيه</span>
-                            {quantity > 1 && (
-                              <span className="text-[10px] text-slate-400 font-medium">
-                                ({formatPrice(finalPrice)} للواحدة)
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-1.5 bg-slate-100 rounded-xl p-1 border border-slate-200/60">
-                            <button
-                              onClick={() => updateCartQuantity(product.code, -1)}
-                              className="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 text-ink flex items-center justify-center text-xs shadow-xs transition-colors"
-                              title="تقليل الكمية"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-5 text-center text-xs font-bold text-ink">
-                              {quantity}
-                            </span>
-                            <button
-                              onClick={() => updateCartQuantity(product.code, 1)}
-                              className="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 text-ink flex items-center justify-center text-xs shadow-xs transition-colors"
-                              title="زيادة الكمية"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Footer & Checkout actions */}
-          {cartItems.length > 0 && (
-            <div className="p-5 sm:p-6 border-t border-slate-100 bg-slate-50/90 space-y-4">
-              
-              {/* Financial summary */}
-              <div className="space-y-2 text-xs sm:text-sm">
-                <div className="flex justify-between text-slate-500 font-medium">
-                  <span>المجموع الفرعي ({cartCount} قطع):</span>
-                  <span>{formatPrice(cartTotal)} جنيه</span>
-                </div>
-                <div className="flex justify-between text-slate-500 font-medium">
-                  <span className="flex items-center gap-1">
-                    <Truck className="w-3.5 h-3.5 text-slate-400" />
-                    <span>التوصيل / الاستلام:</span>
-                  </span>
-                  <span className="text-emerald-700 font-bold">استلام مجاني من الفرع</span>
-                </div>
-                <div className="pt-2 border-t border-slate-200/70 flex justify-between items-baseline">
-                  <span className="font-heading font-black text-sm sm:text-base text-ink">
-                    الإجمالي النهائي:
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-heading font-black text-xl sm:text-2xl text-ink">
-                      {formatPrice(cartTotal)}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-600">جنيه مصري</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="space-y-2.5 pt-1">
-                <button
-                  onClick={handleProceedToCheckout}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-ink font-heading font-black text-sm sm:text-base shadow-glow-amber transition-all active:scale-98"
-                >
-                  <CreditCard className="w-5 h-5" />
-                  <span>المتابعة للدفع وإنهاء الطلب</span>
-                  <ArrowLeft className="w-4 h-4 mr-1" />
-                </button>
-
-                <a
-                  href={getWhatsAppCartBookingLink()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-heading font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-98"
-                >
-                  <MessageCircle className="w-4 h-4 text-emerald-200" />
-                  <span>حجز السلة بالكامل عبر واتساب</span>
-                </a>
-              </div>
-
-              <p className="text-[11px] text-center text-slate-400 font-medium">
-                🔒 دفع آمن ومشفر 100% · إمكانية الدفع عند المعاينة في الفرع
-              </p>
-            </div>
-          )}
-
+  const footer = hasItems ? (
+    <div className="space-y-2.5 pt-0.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-fg-muted">
+            المجموع (<Pieces n={cartCount} />)
+          </p>
+          {savings > 0 ? (
+            <p className="num mt-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">وفّرت {formatPrice(savings)} ج من العروض</p>
+          ) : null}
         </div>
+        <p className="num shrink-0 font-heading text-2xl font-black leading-none text-fg">
+          {formatPrice(cartTotal)} <span className="text-xs font-bold text-fg-muted">ج</span>
+        </p>
       </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-fg-subtle">
+          <Truck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">الشحن بيتحسب حسب المحافظة</span>
+        </p>
+        <button
+          type="button"
+          onClick={handleClear}
+          className="-my-2 -ml-2 inline-flex h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-bold text-fg-subtle transition-colors hover:bg-surface-2 hover:text-red-600 dark:hover:text-red-400"
+        >
+          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+          فضّي السلة
+        </button>
+      </div>
+
+      {soldCount > 0 ? (
+        <p role="alert" className="flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          فيه قطع اتباعت، شيلها من السلة عشان تكمّل
+        </p>
+      ) : null}
+
+      <Button size="lg" block onClick={goCheckout} disabled={soldCount > 0} className="text-base">
+        كمّل الشراء
+        <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+      </Button>
+      <Button variant="whatsapp" size="md" block href={getWhatsAppCartBookingLink()} target="_blank" rel="noopener noreferrer">
+        <WhatsAppIcon className="h-[18px] w-[18px]" aria-hidden="true" />
+        احجز السلة كلها على واتساب
+      </Button>
     </div>
+  ) : null;
+
+  return (
+    <Sheet
+      isOpen={isCartOpen}
+      onClose={close}
+      title="سلة التسوق"
+      subtitle={
+        hasItems ? (
+          <>
+            <Pieces n={cartCount} /> في السلة
+          </>
+        ) : (
+          'لسه مفيش حاجة في السلة'
+        )
+      }
+      side="start"
+      width="sm:max-w-[440px]"
+      footer={footer}
+    >
+      <div className="space-y-4 px-4 py-4 sm:px-5">
+        {hasItems ? (
+          <>
+            <div className="flex items-center justify-center gap-3 rounded-xl bg-surface-2 px-3 py-2 text-[11px] font-bold text-fg-muted">
+              <span className="inline-flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                عاين قبل ما تدفع
+              </span>
+              <span aria-hidden="true" className="h-3 w-px bg-line-strong" />
+              <span className="inline-flex items-center gap-1">
+                <BadgeCheck className="h-3.5 w-3.5 text-brand-blue dark:text-blue-400" aria-hidden="true" />
+                أرقام رسمية بس
+              </span>
+            </div>
+
+            <ul className="relative flex flex-col gap-3" aria-label="القطع اللي في السلة">
+              <AnimatePresence mode={reduce ? 'sync' : 'popLayout'} initial={false}>
+                {cartItems.map((item) => (
+                  <CartItemRow key={item.code} item={item} onOpen={openProduct} />
+                ))}
+              </AnimatePresence>
+            </ul>
+          </>
+        ) : (
+          <EmptyState
+            icon={ShoppingCart}
+            title="السلة فاضية"
+            description="شوف المعروض وضيف اللي يعجبك. تقدر تعاين أي قطعة في الفرع قبل ما تدفع."
+            action={
+              <Button size="md" onClick={browse}>
+                تصفح المعروض
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            }
+            className="py-10"
+          />
+        )}
+
+        {suggestions.length ? <Suggestions items={suggestions} onOpen={openProduct} /> : null}
+      </div>
+    </Sheet>
   );
 }

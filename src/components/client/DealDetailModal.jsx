@@ -1,313 +1,166 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Boxes, ClipboardList, Gavel, HandCoins, MapPin, Scale, ShieldCheck, Truck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import {
-  X,
-  Layers,
-  MapPin,
-  Scale,
-  PackageCheck,
-  CheckCircle2,
-  ShieldCheck,
-  MessageCircle,
-  CreditCard,
-  Building2,
-  Sparkles,
-  Phone,
-  ArrowRight,
-  TrendingUp,
-  Tag,
-  Truck,
-} from 'lucide-react';
+import Modal from '../common/Modal';
+import { WhatsAppIcon } from '../common/BrandIcons';
+import { Button, Input, StatusBadge } from '../ui';
+
+const DEAL_LABELS = { avail: 'متاحة للمعاينة', held: 'جاري المعاينة', sold: 'اتباعت' };
 
 export default function DealDetailModal() {
-  const {
-    selectedDealForDetail,
-    setSelectedDealForDetail,
-    formatPrice,
-    getWhatsAppDealLink,
-    bookDealDeposit,
-  } = useApp();
+  const { selectedDealForDetail: deal, setSelectedDealForDetail, formatPrice, getWhatsAppDealLink, getGeneralWhatsAppLink, bookDealDeposit } = useApp();
+  const [bid, setBid] = useState('');
+  const [showBid, setShowBid] = useState(false);
 
-  const [customBidAmount, setCustomBidAmount] = useState('');
-  const [showBidForm, setShowBidForm] = useState(false);
+  useEffect(() => {
+    setBid('');
+    setShowBid(false);
+  }, [deal?.code]);
 
-  if (!selectedDealForDetail) return null;
+  const close = () => setSelectedDealForDetail(null);
+  if (!deal) return <Modal isOpen={false} onClose={close} />;
 
-  const deal = selectedDealForDetail;
-  const isAvail = deal.status === 'avail';
-  const isHeld = deal.status === 'held';
+  const savePct = deal.estimatedRetail ? Math.round(((deal.estimatedRetail - deal.totalPrice) / deal.estimatedRetail) * 100) : 0;
   const isSold = deal.status === 'sold';
-
-  const profitMargin = deal.estimatedRetail ? deal.estimatedRetail - deal.totalPrice : 0;
-
-  const handleCustomBid = (e) => {
-    e.preventDefault();
-    if (!customBidAmount) return;
-    const text = `السلام عليكم يا حاج، بخصوص الصفقة (${deal.code}: ${deal.title})، المعروضة بـ ${formatPrice(deal.totalPrice)} ج، أنا جاهز للتنفيذ الفوري وعارض مبلغ ${formatPrice(customBidAmount)} جنيه كـ Total للشروة كاملة. هل يناسبك؟`;
-    window.open(`https://wa.me/201034052401?text=${encodeURIComponent(text)}`, '_blank');
-  };
+  const bidNum = Number(String(bid).replace(/[^\d]/g, ''));
+  const bidLink = getGeneralWhatsAppLink(
+    `السلام عليكم يا حاج، بخصوص الصفقة (${deal.code}: ${deal.title}) المعروضة بـ ${formatPrice(deal.totalPrice)} ج. أنا عايز أقدم عرض سعر ${formatPrice(bidNum)} جنيه للشروة كاملة. ممكن نتكلم؟`
+  );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 flex items-center justify-center bg-ink/75 backdrop-blur-sm animate-in fade-in duration-200">
-      
-      {/* Modal Container */}
-      <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden my-8 max-h-[92vh] flex flex-col">
-        
-        {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
-              <Layers className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
-                  {deal.code}
-                </span>
-                <span className="text-xs font-semibold text-slate-300">
-                  لوط كامل · بيع شروة واحدة كـ Total
-                </span>
-              </div>
-              <h3 className="font-heading font-black text-lg sm:text-xl text-white mt-1 line-clamp-1">
-                {deal.title}
-              </h3>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setSelectedDealForDetail(null)}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-            aria-label="إغلاق"
-          >
-            <X className="w-5 h-5" />
-          </button>
+    <Modal
+      isOpen={Boolean(deal)}
+      onClose={close}
+      title={deal.title}
+      subtitle={`${deal.code} · ${deal.category} · فرع ${deal.branch}`}
+      icon={ClipboardList}
+      maxWidth="sm:max-w-3xl"
+      footer={
+        <div className="flex flex-wrap gap-2">
+          <Button variant="whatsapp" size="lg" className="flex-1" href={isSold ? undefined : getWhatsAppDealLink(deal, 'inspect')} target="_blank" rel="noopener noreferrer" disabled={isSold}>
+            <WhatsAppIcon className="h-5 w-5" aria-hidden="true" />
+            احجز معاينة
+          </Button>
+          {deal.status === 'avail' ? (
+            <Button variant="primary" size="lg" className="flex-1" onClick={() => bookDealDeposit(deal)}>
+              <HandCoins className="h-5 w-5" aria-hidden="true" />
+              عربون {formatPrice(deal.deposit)} ج
+            </Button>
+          ) : null}
+          {!isSold ? (
+            <Button variant="secondary" size="lg" onClick={() => setShowBid((v) => !v)} aria-expanded={showBid}>
+              <Gavel className="h-5 w-5" aria-hidden="true" />
+              قدّم عرض
+            </Button>
+          ) : null}
         </div>
-
-        {/* Scrollable Content */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
-          
-          {/* Top Banner & Financial Summary */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50 via-slate-50 to-white border border-amber-200/80 shadow-soft">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-bold text-amber-800 uppercase tracking-wide block">
-                  السعر المطلوب للشروة بالكامل (Total):
-                </span>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="font-heading font-black text-3xl sm:text-4xl text-ink">
-                    {formatPrice(deal.totalPrice)}
-                  </span>
-                  <span className="text-sm font-bold text-slate-600">جنيه مصري</span>
-                </div>
-              </div>
-
-              {deal.estimatedRetail > 0 && (
-                <div className="bg-white p-3.5 rounded-xl border border-amber-200/80 sm:text-left text-right">
-                  <span className="text-[11px] text-slate-400 block font-semibold">
-                    قيمة التجزئة التقديرية (قطاعي):
-                  </span>
-                  <span className="text-sm font-bold text-slate-600 line-through">
-                    {formatPrice(deal.estimatedRetail)} ج
-                  </span>
-                  <div className="flex items-center gap-1 text-emerald-700 text-xs font-extrabold mt-0.5">
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    <span>وفر للتاجر {formatPrice(profitMargin)} ج</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Quick Specs Badges */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4 mt-4 border-t border-slate-200/70 text-xs">
-              <div className="flex items-center gap-1.5 text-slate-600">
-                <Scale className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="font-medium truncate">{deal.weight || 'حسب الوزن'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-600">
-                <PackageCheck className="w-4 h-4 text-brand-blue shrink-0" />
-                <span className="font-medium truncate">{deal.itemsCount}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-600">
-                <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
-                <span className="font-medium truncate">فرع {deal.branch}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-slate-600">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="font-medium truncate">معاينة وتجربة حية</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          {deal.desc && (
-            <div className="space-y-1.5">
-              <h4 className="font-heading font-black text-sm text-ink">تفاصيل ومصدر الصفقة:</h4>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-200/70">
-                {deal.desc}
+      }
+    >
+      <div className="space-y-5">
+        <div className="relative h-48 overflow-hidden rounded-2xl sm:h-64">
+          <img src={deal.img} alt={deal.title} width="900" height="500" className="h-full w-full object-cover" />
+          <span className="absolute inset-0 bg-gradient-to-t from-ink/80 to-transparent" aria-hidden="true" />
+          <div className="absolute bottom-3 right-3 left-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <StatusBadge status={deal.status} labels={DEAL_LABELS} />
+              <p className="num mt-2 font-heading text-3xl font-black text-white">
+                {formatPrice(deal.totalPrice)} <span className="text-base text-slate-200">ج Total</span>
               </p>
             </div>
-          )}
+            {savePct > 0 ? (
+              <span className="num rounded-xl bg-emerald-500 px-3 py-1.5 font-heading text-sm font-black text-white">وفّر {savePct}% عن القطاعي</span>
+            ) : null}
+          </div>
+        </div>
 
-          {/* Itemized Manifest Table */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="font-heading font-black text-sm sm:text-base text-ink flex items-center gap-2">
-                <Layers className="w-4 h-4 text-amber-500" />
-                <span>كشف محتويات الصفقة بالتفصيل (بند بند):</span>
-              </h4>
-              <span className="text-xs font-bold text-slate-400">
-                {deal.items?.length || 0} بنود رئيسية
-              </span>
-            </div>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { icon: Scale, label: 'الوزن', value: deal.weight },
+            { icon: Boxes, label: 'العدد', value: deal.itemsCount },
+            { icon: MapPin, label: 'الفرع', value: deal.branch },
+            { icon: HandCoins, label: 'العربون', value: `${formatPrice(deal.deposit)} ج` },
+          ].map((s) => (
+            <li key={s.label} className="rounded-2xl bg-surface-2 p-3">
+              <s.icon className="h-4 w-4 text-amber-600" aria-hidden="true" />
+              <span className="mt-1.5 block text-[11px] text-fg-subtle">{s.label}</span>
+              <span className="line-clamp-2 block text-sm font-bold text-fg">{s.value}</span>
+            </li>
+          ))}
+        </ul>
 
-            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+        {deal.desc ? <p className="text-sm leading-relaxed text-fg-muted">{deal.desc}</p> : null}
+
+        {deal.items?.length ? (
+          <div>
+            <h4 className="mb-2 font-heading text-base font-black text-fg">كشف المحتويات ({deal.items.length} بند)</h4>
+            <div className="overflow-hidden rounded-2xl border border-line">
+              <table className="w-full text-right text-sm">
+                <thead className="bg-surface-2 text-xs text-fg-muted">
                   <tr>
-                    <th className="p-3 w-10 text-center">#</th>
-                    <th className="p-3">اسم البند والمعدة</th>
-                    <th className="p-3 w-24">الكمية</th>
-                    <th className="p-3 hidden sm:table-cell">المواصفات والحالة</th>
+                    <th scope="col" className="px-3 py-2.5 font-bold">البند</th>
+                    <th scope="col" className="px-3 py-2.5 font-bold">الكمية</th>
+                    <th scope="col" className="hidden px-3 py-2.5 font-bold sm:table-cell">المواصفات</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {deal.items && deal.items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3 text-center font-mono font-bold text-slate-400">
-                        {idx + 1}
+                <tbody className="divide-y divide-line">
+                  {deal.items.map((it) => (
+                    <tr key={it.name} className="align-top">
+                      <td className="px-3 py-2.5 font-semibold text-fg">
+                        {it.name}
+                        <span className="mt-0.5 block text-xs font-normal text-fg-muted sm:hidden">{it.spec}</span>
                       </td>
-                      <td className="p-3">
-                        <span className="font-bold text-ink block">{item.name}</span>
-                        <span className="text-[11px] text-slate-500 sm:hidden block mt-0.5">
-                          {item.spec}
-                        </span>
-                      </td>
-                      <td className="p-3 font-semibold text-amber-800 bg-amber-50/50">
-                        {item.qty}
-                      </td>
-                      <td className="p-3 text-slate-500 hidden sm:table-cell">
-                        {item.spec}
-                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 font-bold text-amber-700 dark:text-amber-400">{it.qty}</td>
+                      <td className="hidden px-3 py-2.5 text-xs text-fg-muted sm:table-cell">{it.spec}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
+        ) : null}
 
-          {/* Location & Inspection terms */}
-          <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/70 space-y-2">
-            <div className="flex items-center gap-2 text-brand-blue text-xs font-bold">
-              <Truck className="w-4 h-4 shrink-0" />
-              <span>شروط المعاينة والتسليم للوط:</span>
+        <div className="rounded-2xl border border-line p-4">
+          <h4 className="mb-2 flex items-center gap-2 font-heading text-sm font-black text-fg">
+            <Truck className="h-4 w-4 text-brand-blue" aria-hidden="true" />
+            المعاينة والتسليم
+          </h4>
+          <ul className="space-y-2 text-sm text-fg-muted">
+            <li className="flex gap-2">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+              {deal.location}
+            </li>
+            <li className="flex gap-2">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+              المعاينة يومياً من 9 الصبح لـ 5 المغرب، وتقدر تجرب المواتير بالكهرباء قبل التحميل.
+            </li>
+            <li className="flex gap-2">
+              <Scale className="mt-0.5 h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+              لوطات الحديد بتتوزن على ميزان بسكول معتمد قدامك. البيع شروة واحدة، مفيش تجزئة.
+            </li>
+          </ul>
+        </div>
+
+        {showBid ? (
+          <form
+            className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (bidNum > 0) window.open(bidLink, '_blank', 'noopener');
+            }}
+          >
+            <label htmlFor="deal-bid" className="block font-heading text-sm font-black text-fg">
+              عرضك للشروة كاملة كام؟
+            </label>
+            <div className="flex gap-2">
+              <Input id="deal-bid" inputMode="numeric" placeholder={`مثلاً ${formatPrice(Math.round(deal.totalPrice * 0.92))}`} value={bid} onChange={(e) => setBid(e.target.value)} />
+              <Button type="submit" variant="whatsapp" disabled={!bidNum}>
+                ابعت العرض
+              </Button>
             </div>
-            <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside leading-relaxed pr-1">
-              <li>
-                <strong>الموقع:</strong> {deal.location}
-              </li>
-              <li>
-                <strong>المعاينة الفنية:</strong> المعاينة متاحة يومياً من 9 صباحاً حتى 5 مساءً، مع إمكانية تجربة المواتير بالكهرباء فحص العزوم.
-              </li>
-              <li>
-                <strong>الوزن والتسليم:</strong> في حالة لوطات الحديد، يتم الوزن على ميزان بسكول معتمد بحضور المشتري والتحميل بالونش فوراً.
-              </li>
-              <li>
-                <strong>طريقة البيع:</strong> اللوط يباع شروة واحدة كاملة على بعضها كـ Total ولا يوجد تجزئة.
-              </li>
-            </ul>
-          </div>
-
-          {/* Negotiation / Bid Form */}
-          {showBidForm ? (
-            <form onSubmit={handleCustomBid} className="p-4 rounded-2xl bg-amber-50 border border-amber-300 space-y-3 animate-in fade-in">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900">
-                  تقديم عرض سعر / تفاوض مباشر مع الحاج:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowBidForm(false)}
-                  className="text-xs text-slate-500 hover:text-slate-800"
-                >
-                  إلغاء
-                </button>
-              </div>
-
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  required
-                  placeholder="المبلغ المقترح بالجنيه (مثال: 800000)"
-                  value={customBidAmount}
-                  onChange={(e) => setCustomBidAmount(e.target.value)}
-                  className="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-ink text-white font-bold text-xs hover:bg-slate-800 transition-colors"
-                >
-                  إرسال العرض على واتساب
-                </button>
-              </div>
-            </form>
-          ) : null}
-
-        </div>
-
-        {/* Footer Actions */}
-        <div className="p-5 sm:p-6 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3">
-          
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {!showBidForm && isAvail && (
-              <button
-                type="button"
-                onClick={() => setShowBidForm(true)}
-                className="px-4 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-ink font-bold text-xs transition-colors"
-              >
-                🤝 تفاوض / قدّم عرض سعر
-              </button>
-            )}
-
-            {isAvail && (
-              <button
-                type="button"
-                onClick={() => {
-                  bookDealDeposit(deal);
-                  setSelectedDealForDetail(null);
-                }}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-ink font-heading font-black text-xs shadow-glow-amber transition-all active:scale-95"
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>حجز بعربون ({formatPrice(deal.deposit || 50000)} ج)</span>
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {isAvail ? (
-              <a
-                href={getWhatsAppDealLink(deal, 'inspect')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-heading font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95"
-              >
-                <MessageCircle className="w-4 h-4 text-emerald-200" />
-                <span>احجز موعد معاينة في الهنجر</span>
-              </a>
-            ) : isHeld ? (
-              <div className="w-full sm:w-auto px-4 py-3 rounded-xl bg-amber-100 text-amber-900 text-xs font-bold text-center">
-                الصفقة جاري معاينتها حالياً · استفسر عن صفقات قادمة
-              </div>
-            ) : (
-              <div className="w-full sm:w-auto px-4 py-3 rounded-xl bg-slate-200 text-slate-500 text-xs font-bold text-center cursor-not-allowed">
-                تم بيع الصفقة بالكامل
-              </div>
-            )}
-          </div>
-
-        </div>
-
+            <p className="text-xs text-fg-muted">العرض بيوصل للحاج على الواتساب برقم الصفقة، والرد بيكون منه شخصياً.</p>
+          </form>
+        ) : null}
       </div>
-    </div>
+    </Modal>
   );
 }
